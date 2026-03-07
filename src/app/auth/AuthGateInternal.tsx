@@ -44,7 +44,11 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
       if (window.location.hash && window.location.hash.includes('access_token=')) {
         try {
           await setSessionFromUrlHash();
-          window.history.replaceState({}, document.title, '/');
+          const callbackIndex = window.location.pathname.indexOf('/auth/callback');
+          const nextPath = callbackIndex === -1
+            ? window.location.pathname
+            : window.location.pathname.slice(0, callbackIndex) || '/';
+          window.history.replaceState({}, document.title, nextPath);
         } catch (e) {
           console.warn('Failed to set session from hash', e);
         }

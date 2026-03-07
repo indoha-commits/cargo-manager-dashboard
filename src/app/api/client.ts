@@ -14,7 +14,7 @@ function resolveTenantSubdomain(): string | undefined {
   if (envTenant) return envTenant;
   if (typeof window === 'undefined') return undefined;
 
-  const match = window.location.pathname.match(/^\/tenants\/([^/]+)/i);
+  const match = window.location.pathname.match(/^\/t\/([^/]+)/i);
   if (match?.[1]) return match[1];
 
   const host = window.location.hostname;
@@ -28,7 +28,7 @@ export function getAuthHeader(): Record<string, string> {
   const token = getAccessToken();
   const h: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {};
   const tenantSubdomain = resolveTenantSubdomain();
-  if (tenantSubdomain) h['x-mt-tenant-subdomain'] = tenantSubdomain;
+  if (tenantSubdomain) h['x-mt-tenant-slug'] = tenantSubdomain;
   if (!token) console.warn('Missing access token for API request');
   return h;
 }

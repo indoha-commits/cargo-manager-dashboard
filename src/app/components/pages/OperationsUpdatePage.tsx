@@ -68,8 +68,8 @@ export function OperationsUpdatePage() {
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${localStorage.getItem('sb:token') ?? ''}`,
-          ...(window.location.pathname.match(/^\/tenants\/([^/]+)/i)
-            ? { 'x-mt-tenant-subdomain': window.location.pathname.match(/^\/tenants\/([^/]+)/i)?.[1] }
+          ...(window.location.pathname.match(/^\/t\/([^/]+)/i)
+            ? { 'x-mt-tenant-slug': window.location.pathname.match(/^\/t\/([^/]+)/i)?.[1] }
             : {}),
         },
         body: JSON.stringify({ event_type: actionType }),

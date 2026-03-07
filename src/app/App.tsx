@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Menu } from 'lucide-react';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Sidebar } from '@/app/components/Sidebar';
 import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
 import { getSupabase } from '@/app/auth/supabase';
@@ -17,6 +18,41 @@ import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePag
 import { DataSourceSetup } from '@/app/components/DataSourceSetup';
 import { fetchJson } from '@/app/api/client';
 
+type OpsPageId =
+  | 'dashboard'
+  | 'pending-documents'
+  | 'validation'
+  | 'operations-update'
+  | 'import-cargo'
+  | 'cargo-timeline'
+  | 'cargo-registry'
+  | 'create-client'
+  | 'activity-log';
+
+const pageToPath: Record<OpsPageId, string> = {
+  dashboard: '',
+  'pending-documents': 'pending-documents',
+  validation: 'validation',
+  'operations-update': 'operations-update',
+  'import-cargo': 'import-cargo',
+  'cargo-timeline': 'cargo-timeline',
+  'cargo-registry': 'cargo-registry',
+  'create-client': 'create-client',
+  'activity-log': 'activity-log',
+};
+
+const pathToPage: Record<string, OpsPageId> = {
+  '': 'dashboard',
+  'pending-documents': 'pending-documents',
+  validation: 'validation',
+  'operations-update': 'operations-update',
+  'import-cargo': 'import-cargo',
+  'cargo-timeline': 'cargo-timeline',
+  'cargo-registry': 'cargo-registry',
+  'create-client': 'create-client',
+  'activity-log': 'activity-log',
+};
+
 function requireEnv(name: string): string {
   const v = (import.meta.env as any)[name] as string | undefined;
   if (!v) throw new Error(`Missing required env var: ${name}`);
@@ -25,13 +61,88 @@ function requireEnv(name: string): string {
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
 
+function buildTenantBasePath(tenantSlug?: string) {
+  return tenantSlug ? `/t/${tenantSlug}` : '';
+}
+
+function useOpsRouteState() {
+  const { tenantSlug, pageSlug } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const basePath = buildTenantBasePath(tenantSlug);
+  const normalizedPage = pageSlug && pageSlug in pathToPage ? (pageSlug as OpsPageId) : 'dashboard';
+  const currentPage = pathToPage[normalizedPage] ?? 'dashboard';
+
+  const setCurrentPage = (page: OpsPageId) => {
+    const pagePath = pageToPath[page];
+    const target = `${basePath}/${pagePath}`.replace(/\/+$/, '') || '/';
+    if (target === location.pathname) return;
+    navigate(target);
+  };
+
+  return { currentPage, setCurrentPage, basePath };
+}
+
+function OpsPageRenderer({
+  currentPage,
+  setCurrentPage,
+}: {
+  currentPage: OpsPageId;
+  setCurrentPage: (page: OpsPageId) => void;
+}) {
+  const [selectedCargoId, setSelectedCargoId] = useState('');
+  const [newlyCreatedClient, setNewlyCreatedClient] = useState<{ id: string; name: string } | null>(null);
+
+  const handleViewTimeline = (cargoId: string) => {
+    setSelectedCargoId(cargoId);
+    setCurrentPage('cargo-timeline');
+  };
+
+  switch (currentPage) {
+    case 'dashboard':
+      return <DashboardPage />;
+    case 'pending-documents':
+      return <PendingDocumentsPage />;
+    case 'validation':
+      return <ValidationPage />;
+    case 'import-cargo':
+      return <ImportCargoPage />;
+    case 'cargo-timeline':
+      return <CargoTimelinePage preselectedCargoId={selectedCargoId} />;
+    case 'cargo-registry':
+      return (
+        <CargoRegistryPage
+          onViewTimeline={handleViewTimeline}
+          onCreateClient={() => setCurrentPage('create-client')}
+          autoOpenNewCargoWithClient={newlyCreatedClient}
+          onAutoOpenConsumed={() => setNewlyCreatedClient(null)}
+        />
+      );
+    case 'create-client':
+      return (
+        <CreateClientPage
+          onCancel={() => setCurrentPage('cargo-registry')}
+          onCreated={(client) => {
+            setNewlyCreatedClient(client);
+            setCurrentPage('cargo-registry');
+          }}
+        />
+      );
+    case 'activity-log':
+      return <ActivityLogPage />;
+    case 'operations-update':
+      return <OperationsUpdatePage />;
+    default:
+      return <DashboardPage />;
+  }
+}
+
 export default function App() {
   const [dataSourceConnected, setDataSourceConnected] = useState<boolean | null>(null);
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [selectedCargoId, setSelectedCargoId] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [newlyCreatedClient, setNewlyCreatedClient] = useState<{ id: string; name: string } | null>(null);
   const { theme, toggleTheme } = useThemeToggle();
+  const { currentPage, setCurrentPage, basePath } = useOpsRouteState();
 
   useEffect(() => {
     let cancelled = false;
@@ -81,55 +192,12 @@ export default function App() {
     }
   };
 
-  const handleViewTimeline = (cargoId: string) => {
-    setSelectedCargoId(cargoId);
-    setCurrentPage('cargo-timeline');
-  };
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <DashboardPage />;
-      case 'pending-documents':
-        return <PendingDocumentsPage />;
-      case 'validation':
-        return <ValidationPage />;
-      case 'import-cargo':
-        return <ImportCargoPage />;
-      case 'cargo-timeline':
-        return <CargoTimelinePage preselectedCargoId={selectedCargoId} />;
-      case 'cargo-registry':
-        return (
-          <CargoRegistryPage
-            onViewTimeline={handleViewTimeline}
-            onCreateClient={() => setCurrentPage('create-client')}
-            autoOpenNewCargoWithClient={newlyCreatedClient}
-            onAutoOpenConsumed={() => setNewlyCreatedClient(null)}
-          />
-        );
-      case 'create-client':
-        return (
-          <CreateClientPage
-            onCancel={() => setCurrentPage('cargo-registry')}
-            onCreated={(client) => {
-              setNewlyCreatedClient(client);
-              setCurrentPage('cargo-registry');
-            }}
-          />
-        );
-      case 'activity-log':
-        return <ActivityLogPage />;
-      case 'operations-update':
-        return <OperationsUpdatePage />;
-      default:
-        return <DashboardPage />;
-    }
-  };
+  const currentPageMemo = useMemo(() => currentPage, [currentPage]);
 
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} onLogout={handleLogout} />
+      <Sidebar currentPage={currentPageMemo} onPageChange={setCurrentPage} onLogout={handleLogout} />
 
       {/* Mobile top bar */}
       <div
@@ -165,7 +233,7 @@ export default function App() {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="p-0" style={{ backgroundColor: 'var(--sidebar)' }}>
           <OpsSidebarContent
-            currentPage={currentPage}
+            currentPage={currentPageMemo}
             onPageChange={setCurrentPage}
             onLogout={handleLogout}
             onNavigate={() => setMobileNavOpen(false)}
@@ -184,7 +252,22 @@ export default function App() {
             {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
         </div>
-        {renderPage()}
+        <Routes>
+          <Route path="/t/:tenantSlug" element={<Navigate to={`${basePath}/dashboard`} replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/t/:tenantSlug/:pageSlug"
+            element={<OpsPageRenderer currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
+          />
+          <Route
+            path="/:pageSlug"
+            element={<OpsPageRenderer currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to={basePath ? `${basePath}/dashboard` : '/dashboard'} replace />} 
+          />
+        </Routes>
       </main>
     </div>
   );
