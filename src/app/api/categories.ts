@@ -13,7 +13,5 @@ export function requiredDocsForCategory(category: CargoCategory): string[] {
 }
 
 export function formatLabel(value: string): string {
-  if (value === 'WH7_DOC') return 'WH7';
-  if (value === 'EXIT_NOTE') return 'Exit note';
   return value.replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (s) => s.toUpperCase());
 }
