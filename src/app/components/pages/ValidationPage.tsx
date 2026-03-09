@@ -298,13 +298,13 @@ export function ValidationPage() {
 
                         const cargoExpanded = expandedCargo[it.cargo_id] ?? false;
 
-                        const canUpload = it.validation_status === 'pending_upload' || it.validation_status === 'pending_validation';
+                        const canUpload = it.validation_status === 'pending_upload' || it.validation_status === 'pending_validation' || it.validation_status === 'failed';
                         const canSend =
                           Boolean(it.assessment) &&
                           Boolean(it.draft) &&
                           Boolean(it.wh7) &&
                           Boolean(it.exit_note) &&
-                          it.validation_status === 'pending_upload';
+                          it.validation_status === 'pending_upload' || it.validation_status === 'failed';
 
                         return (
                           <div key={it.cargo_id} className="rounded border" style={{ borderColor: 'var(--border)' }}>
