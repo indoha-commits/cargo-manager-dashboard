@@ -516,37 +516,111 @@ export function ValidationPage() {
                                         </div>
                                       </div>
 
-
-                                      {it.validation_status === 'failed' && (
-                                        <div
-                                          className="px-4 py-3 rounded border"
-                                          style={{
-                                            borderColor: 'rgb(239, 68, 68)',
-                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                          }}
-                                        >
-                                          <div className="flex items-start gap-3">
-                                            <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
-                                            <div className="flex-1">
-                                              <div className="text-sm text-red-600" style={{ fontWeight: 600 }}>
-                                                Validation Failed
-                                              </div>
-                                              <div className="text-xs opacity-70 mt-0.5 mb-2">
-                                                Failed {it.validation_completed_at ?? ''}
-                                              </div>
-                                              {it.failure_reason && (
-                                                <div
-                                                  className="text-sm mt-2 px-3 py-2 rounded"
-                                                  style={{ background: 'rgba(239, 68, 68, 0.08)' }}
-                                                >
-                                                  <div className="text-xs opacity-70 mb-1">Failure Reason:</div>
-                                                  <div>{it.failure_reason}</div>
-                                                </div>
-                                              )}
-                                            </div>
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <div className="text-sm" style={{ fontWeight: 600 }}>
+                                            WH7
                                           </div>
+                                          <div className="text-xs opacity-60">
+                                            {it.wh7 ? `Status: ${formatLabel(it.wh7.status)}` : 'Not uploaded'}
+                                          </div>
+                                          {it.wh7?.status === 'REJECTED' && it.wh7?.rejection_reason && (
+                                            <div className="text-xs text-red-500 mt-1">
+                                              Failure Reason: {it.wh7.rejection_reason}
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
+                                        <div className="flex items-center gap-2">
+                                          {it.wh7 && (it.wh7.file_path || it.wh7.file_url) && (
+                                            <button
+                                              type="button"
+                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
+                                              style={{ borderColor: 'var(--border)' }}
+                                              onClick={async () => {
+                                                try {
+                                                  const { url } = await getOpsApprovalSignedUrl(it.wh7!.id);
+                                                  window.open(url, '_blank', 'noreferrer');
+                                                } catch (e) {
+                                                  alert(String(e));
+                                                }
+                                              }}
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                              View
+                                            </button>
+                                          )}
+
+                                          <button
+                                            type="button"
+                                            onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
+                                            disabled={!canUpload || Boolean(busy[wh7Key]) || (it.wh7 && it.wh7.status !== 'REJECTED')}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
+                                            style={{ borderColor: 'var(--border)' }}
+                                          >
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">
+                                              {busy[wh7Key]
+                                                ? 'Uploading WH7…'
+                                                : it.wh7
+                                                  ? 'Uploaded'
+                                                  : 'Upload WH7'}
+                                            </span>
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <div className="text-sm" style={{ fontWeight: 600 }}>
+                                            Exit Note
+                                          </div>
+                                          <div className="text-xs opacity-60">
+                                            {it.exit_note ? `Status: ${formatLabel(it.exit_note.status)}` : 'Not uploaded'}
+                                          </div>
+                                          {it.exit_note?.status === 'REJECTED' && it.exit_note?.rejection_reason && (
+                                            <div className="text-xs text-red-500 mt-1">
+                                              Failure Reason: {it.exit_note.rejection_reason}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {it.exit_note && (it.exit_note.file_path || it.exit_note.file_url) && (
+                                            <button
+                                              type="button"
+                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
+                                              style={{ borderColor: 'var(--border)' }}
+                                              onClick={async () => {
+                                                try {
+                                                  const { url } = await getOpsApprovalSignedUrl(it.exit_note!.id);
+                                                  window.open(url, '_blank', 'noreferrer');
+                                                } catch (e) {
+                                                  alert(String(e));
+                                                }
+                                              }}
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                              View
+                                            </button>
+                                          )}
+
+                                          <button
+                                            type="button"
+                                            onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
+                                            disabled={!canUpload || Boolean(busy[exitNoteKey]) || (it.exit_note && it.exit_note.status !== 'REJECTED')}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
+                                            style={{ borderColor: 'var(--border)' }}
+                                          >
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">
+                                              {busy[exitNoteKey]
+                                                ? 'Uploading Exit Note…'
+                                                : it.exit_note
+                                                  ? 'Uploaded'
+                                                  : 'Upload Exit Note'}
+                                            </span>
+                                          </button>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
