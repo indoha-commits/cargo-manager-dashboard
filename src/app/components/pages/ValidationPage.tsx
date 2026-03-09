@@ -418,6 +418,11 @@ export function ValidationPage() {
                                               ? `Status: ${formatLabel(it.assessment.status)}`
                                               : 'Not uploaded'}
                                           </div>
+                                          {it.assessment?.status === 'REJECTED' && it.assessment?.rejection_reason && (
+                                            <div className="text-xs text-red-500 mt-1">
+                                              Failure Reason: {it.assessment.rejection_reason}
+                                            </div>
+                                          )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {it.assessment && (it.assessment.file_path || it.assessment.file_url) && (
@@ -442,7 +447,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'ASSESSMENT')}
-                                            disabled={!canUpload || Boolean(busy[assessmentKey]) || Boolean(it.assessment)}
+                                            disabled={!canUpload || Boolean(busy[assessmentKey]) || (it.assessment && it.assessment.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -466,6 +471,11 @@ export function ValidationPage() {
                                           <div className="text-xs opacity-60">
                                             {it.draft ? `Status: ${formatLabel(it.draft.status)}` : 'Not uploaded'}
                                           </div>
+                                          {it.draft?.status === 'REJECTED' && it.draft?.rejection_reason && (
+                                            <div className="text-xs text-red-500 mt-1">
+                                              Failure Reason: {it.draft.rejection_reason}
+                                            </div>
+                                          )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {it.draft && (it.draft.file_path || it.draft.file_url) && (
@@ -490,7 +500,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'DECLARATION_DRAFT')}
-                                            disabled={!canUpload || Boolean(busy[draftKey]) || Boolean(it.draft)}
+                                            disabled={!canUpload || Boolean(busy[draftKey]) || (it.draft && it.draft.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -506,101 +516,6 @@ export function ValidationPage() {
                                         </div>
                                       </div>
 
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            WH7
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            {it.wh7 ? `Status: ${formatLabel(it.wh7.status)}` : 'Not uploaded'}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          {it.wh7 && (it.wh7.file_path || it.wh7.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.wh7!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
-                                            disabled={!canUpload || Boolean(busy[wh7Key]) || Boolean(it.wh7)}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
-                                              {busy[wh7Key]
-                                                ? 'Uploading WH7…'
-                                                : it.wh7
-                                                  ? 'Uploaded'
-                                                  : 'Upload WH7'}
-                                            </span>
-                                          </button>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            Exit note
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            {it.exit_note ? `Status: ${formatLabel(it.exit_note.status)}` : 'Not uploaded'}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          {it.exit_note && (it.exit_note.file_path || it.exit_note.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.exit_note!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
-                                            disabled={!canUpload || Boolean(busy[exitNoteKey]) || Boolean(it.exit_note)}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
-                                              {busy[exitNoteKey]
-                                                ? 'Uploading Exit note…'
-                                                : it.exit_note
-                                                  ? 'Uploaded'
-                                                  : 'Upload Exit note'}
-                                            </span>
-                                          </button>
-                                        </div>
-                                      </div>
 
                                       {it.validation_status === 'failed' && (
                                         <div
