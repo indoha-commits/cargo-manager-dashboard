@@ -625,7 +625,10 @@ export function CargoRegistryPage({
               <div>
                 <div className="text-sm opacity-70 mb-1">Required documents (auto)</div>
                 <div className="text-xs opacity-60">
-                  {requiredDocsForCategory(form.category).map(formatLabel).join(', ')}
+                  {requiredDocsForCategory(form.category)
+                    .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
+                    .map(formatLabel)
+                    .join(', ')}
                 </div>
               </div>
 

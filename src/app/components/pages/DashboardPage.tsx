@@ -53,6 +53,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<OpsDashboardResponse | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [tenantName, setTenantName] = useState<string>('');
 
   async function refresh() {
     const res = await getOpsDashboard();
@@ -75,7 +76,18 @@ export function DashboardPage() {
       }
     }
 
+    async function loadTenant() {
+      try {
+        const { getMe } = await import('@/app/api/ops');
+        const me = await getMe();
+        if (!cancelled) setTenantName(me?.email ? me.email.split('@')[0] : '');
+      } catch {
+        if (!cancelled) setTenantName('');
+      }
+    }
+
     load();
+    loadTenant();
     return () => {
       cancelled = true;
     };
@@ -110,12 +122,17 @@ export function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <h1
-        className="mb-6 sm:mb-8 text-xl sm:text-2xl md:text-3xl"
-        style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}
-      >
-        System Overview
-      </h1>
+      <div className="mb-6 sm:mb-8">
+        <h1
+          className="text-xl sm:text-2xl md:text-3xl"
+          style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}
+        >
+          System Overview
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {tenantName ? `Hello ${tenantName} Ops` : 'Hello Ops'}
+        </p>
+      </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-12">

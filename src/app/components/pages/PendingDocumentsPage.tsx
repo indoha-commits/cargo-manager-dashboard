@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, ExternalLink, Search } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Search, Loader2 } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
   getOpsPendingDocuments,
@@ -275,10 +275,7 @@ export function PendingDocumentsPage() {
                                             }
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
-                                              <span
-                                                className="inline-block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"
-                                                aria-label="Loading"
-                                              />
+                                              <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
                                             ) : (
                                               <CheckCircle2 className="w-4 h-4" />
                                             )}
@@ -294,7 +291,10 @@ export function PendingDocumentsPage() {
                                             className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded border text-xs sm:text-sm disabled:opacity-60"
                                             style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
                                           >
-                                            Reject
+                                            {verifyState[doc.id] === 'loading' ? (
+                                              <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
+                                            ) : null}
+                                            {verifyState[doc.id] === 'loading' ? 'Rejecting…' : 'Reject'}
                                           </button>
                                         </div>
                                       </div>
