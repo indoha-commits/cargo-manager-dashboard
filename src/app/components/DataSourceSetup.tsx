@@ -1,5 +1,5 @@
 import { Database, HardDrive, Cloud, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { fetchJson } from '@/app/api/client';
 
 interface DataSourceSetupProps {
@@ -19,46 +19,43 @@ export function DataSourceSetup({ onComplete }: DataSourceSetupProps) {
     message?: string;
   }>({ status: 'idle' });
 
-  const sources = useMemo(
-    () => [
-      {
-        id: 'google_drive' as const,
-        name: 'Google Drive',
-        description: 'Connect Google Drive for document storage and cargo data imports',
-        icon: Database,
-        popular: true,
-      },
-      {
-        id: 'dropbox' as const,
-        name: 'Dropbox',
-        description: 'Import logistics data and documents from Dropbox',
-        icon: Cloud,
-        popular: false,
-      },
-      {
-        id: 'onedrive' as const,
-        name: 'Microsoft OneDrive',
-        description: 'Sync cargo records and clearing documents from OneDrive',
-        icon: HardDrive,
-        popular: false,
-      },
-      {
-        id: 'local' as const,
-        name: 'Local Storage',
-        description: 'Use local storage for testing (data will not persist)',
-        icon: HardDrive,
-        popular: false,
-      },
-      {
-        id: 'supabase_storage' as const,
-        name: 'Cloud Storage (Supabase)',
-        description: 'Use InDataFlow cloud storage as the primary store (recommended fallback)',
-        icon: Cloud,
-        popular: false,
-      },
-    ],
-    []
-  );
+  const sources = [
+    {
+      id: 'google_drive' as const,
+      name: 'Google Drive',
+      description: 'Connect Google Drive for document storage and cargo data imports',
+      icon: Database,
+      popular: true,
+    },
+    {
+      id: 'dropbox' as const,
+      name: 'Dropbox',
+      description: 'Import logistics data and documents from Dropbox',
+      icon: Cloud,
+      popular: false,
+    },
+    {
+      id: 'onedrive' as const,
+      name: 'Microsoft OneDrive',
+      description: 'Sync cargo records and clearing documents from OneDrive',
+      icon: HardDrive,
+      popular: false,
+    },
+    {
+      id: 'local' as const,
+      name: 'Local Storage',
+      description: 'Use local storage for testing (data will not persist)',
+      icon: HardDrive,
+      popular: false,
+    },
+    {
+      id: 'supabase_storage' as const,
+      name: 'Cloud Storage (Supabase)',
+      description: 'Use InDataFlow cloud storage as the primary store (recommended fallback)',
+      icon: Cloud,
+      popular: false,
+    },
+  ];
 
   const handleValidateDriveFolder = async () => {
     const trimmed = driveFolderId.trim();

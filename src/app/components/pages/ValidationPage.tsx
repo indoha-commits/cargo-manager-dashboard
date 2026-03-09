@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle, Clock, Upload, XCircle, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import {
   createOpsApprovalUploadUrl,
@@ -113,7 +113,7 @@ export function ValidationPage() {
     };
   }, []);
 
-  const grouped = useMemo<Grouped>(() => {
+  const grouped: Grouped = (() => {
     const byClient = new Map<string, { clientName: string; clientId: string; items: Item[] }>();
     for (const it of items) {
       const clientName = it.client_name ?? 'Unknown Client';
@@ -130,7 +130,7 @@ export function ValidationPage() {
         ...g,
         items: g.items.slice().sort((a, b) => a.cargo_id.localeCompare(b.cargo_id)),
       }));
-  }, [items]);
+  })();
 
   type ApprovalKind = 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE';
 
@@ -163,13 +163,13 @@ export function ValidationPage() {
     }
   };
 
-  const summary = useMemo(() => {
+  const summary = (() => {
     const pendingUpload = items.filter((i) => i.validation_status === 'pending_upload').length;
     const pendingValidation = items.filter((i) => i.validation_status === 'pending_validation').length;
     const validated = items.filter((i) => i.validation_status === 'validated').length;
     const failed = items.filter((i) => i.validation_status === 'failed').length;
     return { pendingUpload, pendingValidation, validated, failed };
-  }, [items]);
+  })();
 
   const pickFile = (cargoId: string, kind: ApprovalKind) => {
     pendingPickRef.current = { cargoId, kind };

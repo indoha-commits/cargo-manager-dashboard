@@ -1,5 +1,5 @@
 import { ExternalLink, Plus, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createOpsCargo,
   deleteOpsCargo,
@@ -116,7 +116,7 @@ export function CargoRegistryPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNewCargoWithClient]);
 
-  const grouped = useMemo<ClientGroup[]>(() => {
+  const grouped: ClientGroup[] = (() => {
     const q = searchTerm.trim().toLowerCase();
     const filtered = q
       ? rows.filter((r) => {
@@ -151,7 +151,7 @@ export function CargoRegistryPage({
         ...g,
         cargos: g.cargos.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
       }));
-  }, [rows, searchTerm]);
+  })();
 
   const toggleClient = (clientName: string) => {
     setExpandedClients((prev) => {

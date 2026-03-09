@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 
 import { getOpsClients } from '@/app/api/ops';
@@ -32,7 +32,7 @@ export function ImportCargoPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
+  const requiredDocs = requiredDocsForCategory(category);
 
   useEffect(() => {
     const load = async () => {

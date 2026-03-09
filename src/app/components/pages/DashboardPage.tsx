@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { AlertCircle, FileText, Eye, XCircle } from 'lucide-react';
 import { getOpsDashboard, getOpsDocumentSignedUrl, type OpsDashboardResponse } from '@/app/api/ops';
 import { getSupabase } from '@/app/auth/supabase';
@@ -94,7 +94,7 @@ export function DashboardPage() {
   }, []);
 
   const kpis = data?.kpis;
-  const urgentDocs = useMemo<UrgentDoc[]>(() => data?.urgent_documents ?? [], [data]);
+  const urgentDocs: UrgentDoc[] = data?.urgent_documents ?? [];
 
   function requireEnv(name: string): string {
     const v = (import.meta.env as any)[name] as string | undefined;

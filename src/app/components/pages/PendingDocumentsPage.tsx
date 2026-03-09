@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Download, ExternalLink, Search, Loader2 } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
@@ -61,7 +61,7 @@ export function PendingDocumentsPage() {
     };
   }, []);
 
-  const grouped = useMemo<Grouped>(() => {
+  const grouped: Grouped = (() => {
     const q = search.trim().toLowerCase();
     const filtered = q
       ? docs.filter((d) => {
@@ -94,7 +94,7 @@ export function PendingDocumentsPage() {
             documents: documents.slice().sort((a, b) => String(a.document_type).localeCompare(String(b.document_type))),
           })),
       }));
-  }, [docs, search]);
+  })();
 
   const toggleClient = (clientName: string) => {
     setExpandedClients((prev) => {
