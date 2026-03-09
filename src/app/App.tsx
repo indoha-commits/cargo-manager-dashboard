@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Menu } from 'lucide-react';
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/app/components/Sidebar';
 import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
 import { getSupabase } from '@/app/auth/supabase';
@@ -61,27 +61,22 @@ function requireEnv(name: string): string {
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
 
-function buildTenantBasePath(tenantSlug?: string) {
-  return tenantSlug ? `/t/${tenantSlug}` : '';
-}
-
 function useOpsRouteState() {
-  const { tenantSlug, pageSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const basePath = buildTenantBasePath(tenantSlug);
+  const pageSlug = location.pathname.replace(/^\//, '');
   const normalizedPage = pageSlug && pageSlug in pathToPage ? (pageSlug as OpsPageId) : 'dashboard';
   const currentPage = pathToPage[normalizedPage] ?? 'dashboard';
 
   const setCurrentPage = (page: OpsPageId) => {
     const pagePath = pageToPath[page];
-    const target = `${basePath}/${pagePath}`.replace(/\/+$/, '') || '/';
+    const target = `/${pagePath}`.replace(/\/+$/, '') || '/';
     if (target === location.pathname) return;
     navigate(target);
   };
 
-  return { currentPage, setCurrentPage, basePath };
+  return { currentPage, setCurrentPage };
 }
 
 function OpsPageRenderer({
@@ -142,7 +137,7 @@ export default function App() {
   const [dataSourceConnected, setDataSourceConnected] = useState<boolean | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { theme, toggleTheme } = useThemeToggle();
-  const { currentPage, setCurrentPage, basePath } = useOpsRouteState();
+  const { currentPage, setCurrentPage } = useOpsRouteState();
   const currentPageMemo = useMemo(() => currentPage, [currentPage]);
 
   useEffect(() => {
@@ -252,20 +247,12 @@ export default function App() {
           </button>
         </div>
         <Routes>
-          <Route path="/t/:tenantSlug" element={<Navigate to={`${basePath}/dashboard`} replace />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="/t/:tenantSlug/:pageSlug"
-            element={<OpsPageRenderer currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
-          />
           <Route
             path="/:pageSlug"
             element={<OpsPageRenderer currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
           />
-          <Route
-            path="*"
-            element={<Navigate to={basePath ? `${basePath}/dashboard` : '/dashboard'} replace />} 
-          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
     </div>
