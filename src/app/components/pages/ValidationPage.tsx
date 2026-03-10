@@ -165,7 +165,9 @@ export function ValidationPage() {
 
   const summary = useMemo(() => {
     const pendingUpload = items.filter((i) => i.validation_status === 'pending_upload').length;
-    const pendingValidation = items.filter((i) => i.validation_status === 'pending_validation').length;
+    const pendingValidation = items.filter(
+      (i) => i.validation_status === 'pending_validation' || i.validation_status === 'failed',
+    ).length;
     const validated = items.filter((i) => i.validation_status === 'validated').length;
     const failed = items.filter((i) => i.validation_status === 'failed').length;
     return { pendingUpload, pendingValidation, validated, failed };
@@ -177,6 +179,12 @@ export function ValidationPage() {
     else if (kind === 'DECLARATION_DRAFT') draftInputRef.current?.click();
     else if (kind === 'WH7_DOC') wh7InputRef.current?.click();
     else exitNoteInputRef.current?.click();
+  };
+
+  const formatApprovalStatus = (status?: string | null) => {
+    if (!status) return 'Not uploaded';
+    if (status === 'REJECTED') return 'Awaiting validation';
+    return formatLabel(status);
   };
 
   const onFilePicked = async (file: File | null) => {
@@ -414,9 +422,7 @@ export function ValidationPage() {
                                             Assessment
                                           </div>
                                           <div className="text-xs opacity-60">
-                                            {it.assessment
-                                              ? `Status: ${formatLabel(it.assessment.status)}`
-                                              : 'Not uploaded'}
+                                            Status: {formatApprovalStatus(it.assessment?.status)}
                                           </div>
                                           {it.assessment?.status === 'REJECTED' && it.assessment?.rejection_reason && (
                                             <div className="text-xs text-red-500 mt-1">
@@ -473,7 +479,7 @@ export function ValidationPage() {
                                             Draft Validation
                                           </div>
                                           <div className="text-xs opacity-60">
-                                            {it.draft ? `Status: ${formatLabel(it.draft.status)}` : 'Not uploaded'}
+                                            Status: {formatApprovalStatus(it.draft?.status)}
                                           </div>
                                           {it.draft?.status === 'REJECTED' && it.draft?.rejection_reason && (
                                             <div className="text-xs text-red-500 mt-1">
@@ -530,7 +536,7 @@ export function ValidationPage() {
                                             WH7
                                           </div>
                                           <div className="text-xs opacity-60">
-                                            {it.wh7 ? `Status: ${formatLabel(it.wh7.status)}` : 'Not uploaded'}
+                                            Status: {formatApprovalStatus(it.wh7?.status)}
                                           </div>
                                           {it.wh7?.status === 'REJECTED' && it.wh7?.rejection_reason && (
                                             <div className="text-xs text-red-500 mt-1">
@@ -587,7 +593,7 @@ export function ValidationPage() {
                                             Exit Note
                                           </div>
                                           <div className="text-xs opacity-60">
-                                            {it.exit_note ? `Status: ${formatLabel(it.exit_note.status)}` : 'Not uploaded'}
+                                            Status: {formatApprovalStatus(it.exit_note?.status)}
                                           </div>
                                           {it.exit_note?.status === 'REJECTED' && it.exit_note?.rejection_reason && (
                                             <div className="text-xs text-red-500 mt-1">
