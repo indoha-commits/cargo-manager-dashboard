@@ -416,21 +416,17 @@ export function ValidationPage() {
                                     </div>
 
                                     <div className="space-y-3">
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            Assessment
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            Status: {formatApprovalStatus(it.assessment?.status)}
-                                          </div>
-                                          {it.assessment?.status === 'REJECTED' && it.assessment?.rejection_reason && (
-                                            <div className="text-xs text-red-500 mt-1">
-                                              Failure Reason: {it.assessment.rejection_reason}
+                                      <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="text-sm" style={{ fontWeight: 600 }}>
+                                              Assessment
                                             </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs opacity-60 mt-1">
+                                              Status: {formatApprovalStatus(it.assessment?.status)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
                                           {it.assessment && (it.assessment.file_path || it.assessment.file_url) && (
                                             <button
                                               type="button"
@@ -471,23 +467,39 @@ export function ValidationPage() {
                                             </span>
                                           </button>
                                         </div>
+                                        </div>
+                                        {it.assessment?.status === 'REJECTED' && it.assessment?.rejection_reason && (
+                                          <div 
+                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
+                                            style={{ 
+                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                              borderLeft: '3px solid rgb(239, 68, 68)' 
+                                            }}
+                                          >
+                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div className="flex-1">
+                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
+                                                Rejection Reason
+                                              </div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
+                                                {it.assessment.rejection_reason}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
 
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            Draft Validation
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            Status: {formatApprovalStatus(it.draft?.status)}
-                                          </div>
-                                          {it.draft?.status === 'REJECTED' && it.draft?.rejection_reason && (
-                                            <div className="text-xs text-red-500 mt-1">
-                                              Failure Reason: {it.draft.rejection_reason}
+                                      <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="text-sm" style={{ fontWeight: 600 }}>
+                                              Draft Validation
                                             </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs opacity-60 mt-1">
+                                              Status: {formatApprovalStatus(it.draft?.status)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
                                           {it.draft && (it.draft.file_path || it.draft.file_url) && (
                                             <button
                                               type="button"
@@ -528,23 +540,39 @@ export function ValidationPage() {
                                             </span>
                                           </button>
                                         </div>
+                                        </div>
+                                        {it.draft?.status === 'REJECTED' && it.draft?.rejection_reason && (
+                                          <div 
+                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
+                                            style={{ 
+                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                              borderLeft: '3px solid rgb(239, 68, 68)' 
+                                            }}
+                                          >
+                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div className="flex-1">
+                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
+                                                Rejection Reason
+                                              </div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
+                                                {it.draft.rejection_reason}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
 
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            WH7
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            Status: {formatApprovalStatus(it.wh7?.status)}
-                                          </div>
-                                          {it.wh7?.status === 'REJECTED' && it.wh7?.rejection_reason && (
-                                            <div className="text-xs text-red-500 mt-1">
-                                              Failure Reason: {it.wh7.rejection_reason}
+                                      <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="text-sm" style={{ fontWeight: 600 }}>
+                                              WH7
                                             </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs opacity-60 mt-1">
+                                              Status: {formatApprovalStatus(it.wh7?.status)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
                                           {it.wh7 && (it.wh7.file_path || it.wh7.file_url) && (
                                             <button
                                               type="button"
@@ -585,23 +613,39 @@ export function ValidationPage() {
                                             </span>
                                           </button>
                                         </div>
+                                        </div>
+                                        {it.wh7?.status === 'REJECTED' && it.wh7?.rejection_reason && (
+                                          <div 
+                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
+                                            style={{ 
+                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                              borderLeft: '3px solid rgb(239, 68, 68)' 
+                                            }}
+                                          >
+                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div className="flex-1">
+                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
+                                                Rejection Reason
+                                              </div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
+                                                {it.wh7.rejection_reason}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
 
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="text-sm" style={{ fontWeight: 600 }}>
-                                            Exit Note
-                                          </div>
-                                          <div className="text-xs opacity-60">
-                                            Status: {formatApprovalStatus(it.exit_note?.status)}
-                                          </div>
-                                          {it.exit_note?.status === 'REJECTED' && it.exit_note?.rejection_reason && (
-                                            <div className="text-xs text-red-500 mt-1">
-                                              Failure Reason: {it.exit_note.rejection_reason}
+                                      <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="text-sm" style={{ fontWeight: 600 }}>
+                                              Exit Note
                                             </div>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs opacity-60 mt-1">
+                                              Status: {formatApprovalStatus(it.exit_note?.status)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
                                           {it.exit_note && (it.exit_note.file_path || it.exit_note.file_url) && (
                                             <button
                                               type="button"
@@ -642,6 +686,26 @@ export function ValidationPage() {
                                             </span>
                                           </button>
                                         </div>
+                                        </div>
+                                        {it.exit_note?.status === 'REJECTED' && it.exit_note?.rejection_reason && (
+                                          <div 
+                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
+                                            style={{ 
+                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                              borderLeft: '3px solid rgb(239, 68, 68)' 
+                                            }}
+                                          >
+                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div className="flex-1">
+                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
+                                                Rejection Reason
+                                              </div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
+                                                {it.exit_note.rejection_reason}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
