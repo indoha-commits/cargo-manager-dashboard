@@ -57,10 +57,10 @@ const getStatusBadge = (status: string) => {
       };
     case 'failed':
       return {
-        bg: 'rgba(239, 68, 68, 0.15)',
-        color: 'rgb(239, 68, 68)',
-        text: 'VALIDATION FAILED',
-        icon: XCircle,
+        bg: 'rgba(59, 130, 246, 0.15)',
+        color: 'rgb(59, 130, 246)',
+        text: 'AWAITING VALIDATION',
+        icon: Clock,
       };
     default:
       return {
@@ -454,9 +454,13 @@ export function ValidationPage() {
                                             <Upload className="w-4 h-4" />
                                             <span className="text-sm">
                                               {busy[assessmentKey]
-                                                ? 'Uploading Assessment…'
+                                                ? it.assessment?.status === 'REJECTED'
+                                                  ? 'Re-uploading Assessment…'
+                                                  : 'Uploading Assessment…'
                                                 : it.assessment
-                                                  ? 'Uploaded'
+                                                  ? it.assessment.status === 'REJECTED'
+                                                    ? 'Re-upload Assessment'
+                                                    : 'Uploaded'
                                                   : 'Upload Assessment'}
                                             </span>
                                           </button>
@@ -507,9 +511,13 @@ export function ValidationPage() {
                                             <Upload className="w-4 h-4" />
                                             <span className="text-sm">
                                               {busy[draftKey]
-                                                ? 'Uploading Draft…'
+                                                ? it.draft?.status === 'REJECTED'
+                                                  ? 'Re-uploading Draft…'
+                                                  : 'Uploading Draft…'
                                                 : it.draft
-                                                  ? 'Uploaded'
+                                                  ? it.draft.status === 'REJECTED'
+                                                    ? 'Re-upload Draft'
+                                                    : 'Uploaded'
                                                   : 'Upload Draft'}
                                             </span>
                                           </button>
@@ -560,9 +568,13 @@ export function ValidationPage() {
                                             <Upload className="w-4 h-4" />
                                             <span className="text-sm">
                                               {busy[wh7Key]
-                                                ? 'Uploading WH7…'
+                                                ? it.wh7?.status === 'REJECTED'
+                                                  ? 'Re-uploading WH7…'
+                                                  : 'Uploading WH7…'
                                                 : it.wh7
-                                                  ? 'Uploaded'
+                                                  ? it.wh7.status === 'REJECTED'
+                                                    ? 'Re-upload WH7'
+                                                    : 'Uploaded'
                                                   : 'Upload WH7'}
                                             </span>
                                           </button>
@@ -613,9 +625,13 @@ export function ValidationPage() {
                                             <Upload className="w-4 h-4" />
                                             <span className="text-sm">
                                               {busy[exitNoteKey]
-                                                ? 'Uploading Exit Note…'
+                                                ? it.exit_note?.status === 'REJECTED'
+                                                  ? 'Re-uploading Exit Note…'
+                                                  : 'Uploading Exit Note…'
                                                 : it.exit_note
-                                                  ? 'Uploaded'
+                                                  ? it.exit_note.status === 'REJECTED'
+                                                    ? 'Re-upload Exit Note'
+                                                    : 'Uploaded'
                                                   : 'Upload Exit Note'}
                                             </span>
                                           </button>

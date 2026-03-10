@@ -129,9 +129,6 @@ export function DashboardPage() {
         >
           System Overview
         </h1>
-        <p className="text-sm text-muted-foreground">
-          {tenantName ? `Hello ${tenantName} Ops` : 'Hello Ops'}
-        </p>
       </div>
 
       {/* KPI Grid */}

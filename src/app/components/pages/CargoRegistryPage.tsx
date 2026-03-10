@@ -540,7 +540,7 @@ export function CargoRegistryPage({
                   <option value="__add_new_client__">+ Add new client…</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.id})
+                      {c.name}
                     </option>
                   ))}
                 </select>
