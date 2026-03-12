@@ -60,9 +60,11 @@ export function OperationsUpdatePage() {
 
   const handleRecordAction = async (cargoId: string, actionType: string) => {
     const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/undefined\b/, '');
+    const endpoint = `${baseUrl}/ops/cargo/${encodeURIComponent(cargoId)}/timeline`;
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/ops/cargo/${encodeURIComponent(cargoId)}/timeline`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
