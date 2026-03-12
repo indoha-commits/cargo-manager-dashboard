@@ -129,7 +129,16 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@layer base {
+/* White calendar icon for date inputs */
+input[type="date"].date-white-icon {
+  color-scheme: dark;
+}
+
+input[type="date"].date-white-icon::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+@layer base { 
   * {
     @apply border-border outline-ring/50;
   }

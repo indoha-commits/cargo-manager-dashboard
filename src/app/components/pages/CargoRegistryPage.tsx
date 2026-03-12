@@ -617,7 +617,7 @@ export function CargoRegistryPage({
                   type="date"
                   value={form.expected_arrival_date}
                   onChange={(e) => setForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground date-white-icon"
                   style={{ borderColor: 'var(--border)' }}
                 />
               </div>
