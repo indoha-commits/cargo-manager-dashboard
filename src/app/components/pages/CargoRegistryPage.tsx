@@ -861,7 +861,7 @@ export function CargoRegistryPage({
               </div>
 
               <div>
-                <label className="block text-sm opacity-70 mb-1">Container Group ID (Bill of Lading)</label>
+                <label className="block text-sm opacity-70 mb-1">Container Group Bill of Loading</label>
                 <input
                   value={bulkForm.bill_of_lading}
                   onChange={(e) => setBulkForm((f) => ({ ...f, bill_of_lading: e.target.value }))}
