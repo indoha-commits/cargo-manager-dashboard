@@ -289,12 +289,31 @@ export type OpsCreateCargoRequest = {
   container_count?: number;
   destination?: string | null;
   origin?: string | null;
+  bill_of_lading?: string | null;
+};
+
+export type OpsBulkCreateCargoRequest = {
+  client_id: string;
+  bill_of_lading: string;
+  expected_arrival_date: string;
+  category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
+  required_documents: string[];
+  container_count: number;
+  destination?: string | null;
+  origin?: string | null;
 };
 
 export type OpsCreateCargoResponse = { cargo_id: string; container_id: string | null };
 
 export async function createOpsCargo(payload: OpsCreateCargoRequest): Promise<OpsCreateCargoResponse> {
   return await fetchJson<OpsCreateCargoResponse>('/ops/cargo', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createOpsCargoBulk(payload: OpsBulkCreateCargoRequest): Promise<{ cargos: { id: string }[]; bill_of_lading: string }> {
+  return await fetchJson<{ cargos: { id: string }[]; bill_of_lading: string }>('/ops/cargo/bulk', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

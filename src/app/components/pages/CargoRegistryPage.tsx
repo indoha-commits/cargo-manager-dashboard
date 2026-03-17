@@ -2,6 +2,7 @@ import { ExternalLink, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createOpsCargo,
+  createOpsCargoBulk,
   deleteOpsCargo,
   getOpsCargoRegistry,
   getOpsClients,
@@ -47,6 +48,7 @@ export function CargoRegistryPage({
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
 
   const [showNewCargo, setShowNewCargo] = useState(false);
+  const [showBulkCargo, setShowBulkCargo] = useState(false);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
@@ -69,6 +71,24 @@ export function CargoRegistryPage({
   }>({
     client_id: '',
     container_id: '',
+    expected_arrival_date: '',
+    container_count: 1,
+    category: 'ELECTRONICS',
+    destination: '',
+    origin: '',
+  });
+
+  const [bulkForm, setBulkForm] = useState<{
+    client_id: string;
+    bill_of_lading: string;
+    expected_arrival_date: string;
+    container_count: number;
+    category: CargoCategory;
+    destination: string;
+    origin: string;
+  }>({
+    client_id: '',
+    bill_of_lading: '',
     expected_arrival_date: '',
     container_count: 1,
     category: 'ELECTRONICS',
@@ -245,6 +265,63 @@ export function CargoRegistryPage({
         origin: form.origin.trim() || null,
       });
       setShowNewCargo(false);
+      setForm({
+        client_id: '',
+        container_id: '',
+        expected_arrival_date: '',
+        container_count: 1,
+        category: 'ELECTRONICS',
+        destination: '',
+        origin: '',
+      });
+      await refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitBulkCargo = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!bulkForm.client_id) {
+      alert('Please select a client');
+      return;
+    }
+    if (!bulkForm.bill_of_lading.trim()) {
+      alert('Please enter a Bill of Lading');
+      return;
+    }
+    if (!bulkForm.expected_arrival_date) {
+      alert('Please select expected arrival date');
+      return;
+    }
+
+    const required_documents = requiredDocsForCategory(bulkForm.category);
+
+    setSubmitting(true);
+    try {
+      await createOpsCargoBulk({
+        client_id: bulkForm.client_id,
+        bill_of_lading: bulkForm.bill_of_lading.trim(),
+        expected_arrival_date: bulkForm.expected_arrival_date,
+        category: bulkForm.category,
+        required_documents,
+        container_count: bulkForm.container_count,
+        destination: bulkForm.destination.trim() || null,
+        origin: bulkForm.origin.trim() || null,
+      });
+      setShowBulkCargo(false);
+      setBulkForm({
+        client_id: '',
+        bill_of_lading: '',
+        expected_arrival_date: '',
+        container_count: 1,
+        category: 'ELECTRONICS',
+        destination: '',
+        origin: '',
+      });
       await refresh();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
@@ -263,14 +340,24 @@ export function CargoRegistryPage({
           <p className="text-sm opacity-60 mt-2">All cargos across clients (ops)</p>
         </div>
 
-        <button
-          onClick={openNewCargo}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
-          style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-        >
-          <Plus className="w-4 h-4" />
-          New Cargo
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button
+            onClick={openNewCargo}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
+            style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+          >
+            <Plus className="w-4 h-4" />
+            New Cargo
+          </button>
+          <button
+            onClick={() => setShowBulkCargo(true)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
+            style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+          >
+            <Plus className="w-4 h-4" />
+            Bulk Create
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -649,6 +736,179 @@ export function CargoRegistryPage({
                   style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
                 >
                   {submitting ? 'Creating…' : 'Create Cargo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showBulkCargo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ backgroundColor: 'rgba(11, 28, 45, 0.8)' }}
+          onClick={() => setShowBulkCargo(false)}
+        >
+          <div
+            className="bg-card rounded-lg border w-full max-w-xl"
+            style={{ borderColor: 'var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Bulk Create Cargo
+                </h2>
+                <p className="text-sm opacity-60 mt-1">Creates multiple containers under one Bill of Lading.</p>
+              </div>
+              <button
+                onClick={() => setShowBulkCargo(false)}
+                className="p-2 rounded border"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={submitBulkCargo} className="p-6 space-y-4">
+              {clientsError && (
+                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
+                  {clientsError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Client</label>
+                <select
+                  value={bulkForm.client_id}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '__add_new_client__') {
+                      onCreateClient();
+                      return;
+                    }
+                    setBulkForm((f) => ({ ...f, client_id: v }));
+                  }}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  style={{ borderColor: 'var(--border)' }}
+                  disabled={clientsLoading}
+                >
+                  <option value="">Select client…</option>
+                  <option value="__add_new_client__">+ Add new client…</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {clientsLoading && <div className="text-xs opacity-60 mt-1">Loading clients…</div>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm opacity-70 mb-1">Category</label>
+                  <select
+                    value={bulkForm.category}
+                    onChange={(e) => setBulkForm((f) => ({ ...f, category: e.target.value as CargoCategory }))}
+                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <option value="ELECTRONICS">Electronics</option>
+                    <option value="RAW_MATERIALS">Raw Materials</option>
+                    <option value="MEDS_BEVERAGE">Meds & Beverage</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm opacity-70 mb-1">Number of Containers</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={bulkForm.container_count}
+                    onChange={(e) => setBulkForm((f) => ({ ...f, container_count: Number(e.target.value) || 1 }))}
+                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                    style={{ borderColor: 'var(--border)' }}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Example: 5 will create BL12345678-001 to BL12345678-005
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Bill of Lading</label>
+                <input
+                  value={bulkForm.bill_of_lading}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, bill_of_lading: e.target.value }))}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  style={{ borderColor: 'var(--border)' }}
+                  placeholder="e.g., BL12345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Origin</label>
+                <input
+                  value={bulkForm.origin}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, origin: e.target.value }))}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  style={{ borderColor: 'var(--border)' }}
+                  placeholder="e.g., Mombasa, KN"
+                />
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Route: {bulkForm.origin || 'Origin'} → {bulkForm.destination || 'Destination'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Destination</label>
+                <input
+                  value={bulkForm.destination}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, destination: e.target.value }))}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  style={{ borderColor: 'var(--border)' }}
+                  placeholder="e.g., Kigali, RW"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Expected Arrival Date</label>
+                <input
+                  type="date"
+                  value={bulkForm.expected_arrival_date}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground date-white-icon"
+                  style={{ borderColor: 'var(--border)' }}
+                />
+              </div>
+
+              <div>
+                <div className="text-sm opacity-70 mb-1">Required documents (auto)</div>
+                <div className="text-xs text-muted-foreground">
+                  {requiredDocsForCategory(bulkForm.category)
+                    .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
+                    .map(formatLabel)
+                    .filter((label) => !['WH7', 'Exit Note', 'Exit note'].includes(label))
+                    .join(', ')}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkCargo(false)}
+                  className="px-4 py-2 rounded border"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={submitting}
+                  type="submit"
+                  className="px-4 py-2 rounded border disabled:opacity-60"
+                  style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                >
+                  {submitting ? 'Creating…' : 'Create Containers'}
                 </button>
               </div>
             </form>

@@ -300,7 +300,7 @@ export function DataSourceSetup({ onComplete }: DataSourceSetupProps) {
 
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground">
-            Documents uploaded by clients are first stored securely. Once verified, they are automatically pushed to
+            Documents uploaded by clients are stored securely in Supabase Storage. External drive sync is currently disabled.
             your connected storage.
           </p>
         </div>
