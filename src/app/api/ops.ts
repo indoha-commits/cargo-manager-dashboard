@@ -283,6 +283,7 @@ export async function createOpsClient(payload: OpsCreateClientRequest): Promise<
 export type OpsCreateCargoRequest = {
   client_id: string;
   container_id: string;
+  container_number: string;
   expected_arrival_date: string;
   category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
   required_documents: string[];

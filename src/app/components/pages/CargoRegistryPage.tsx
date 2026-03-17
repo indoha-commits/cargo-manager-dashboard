@@ -63,6 +63,7 @@ export function CargoRegistryPage({
   const [form, setForm] = useState<{
     client_id: string;
     container_id: string;
+    container_number: string;
     expected_arrival_date: string;
     container_count: number;
     category: CargoCategory;
@@ -71,6 +72,7 @@ export function CargoRegistryPage({
   }>({
     client_id: '',
     container_id: '',
+    container_number: '',
     expected_arrival_date: '',
     container_count: 1,
     category: 'ELECTRONICS',
@@ -200,6 +202,12 @@ export function CargoRegistryPage({
     await reloadClients();
   };
 
+  const openBulkCargo = async () => {
+    setShowBulkCargo(true);
+    if (clients.length) return;
+    await reloadClients();
+  };
+
   const openDeleteCargo = (cargoId: string, clientName: string) => {
     setDeleteError(null);
     setDeleteConfirmText('');
@@ -245,6 +253,10 @@ export function CargoRegistryPage({
       alert('Please enter a container id');
       return;
     }
+    if (!form.container_number.trim()) {
+      alert('Please enter a container number');
+      return;
+    }
     if (!form.expected_arrival_date) {
       alert('Please select expected arrival date');
       return;
@@ -257,6 +269,7 @@ export function CargoRegistryPage({
       await createOpsCargo({
         client_id: form.client_id,
         container_id: form.container_id.trim(),
+        container_number: form.container_number.trim(),
         expected_arrival_date: form.expected_arrival_date,
         category: form.category,
         required_documents,
@@ -268,6 +281,7 @@ export function CargoRegistryPage({
       setForm({
         client_id: '',
         container_id: '',
+        container_number: '',
         expected_arrival_date: '',
         container_count: 1,
         category: 'ELECTRONICS',
@@ -290,7 +304,7 @@ export function CargoRegistryPage({
       return;
     }
     if (!bulkForm.bill_of_lading.trim()) {
-      alert('Please enter a Bill of Lading');
+      alert('Please enter a container group ID');
       return;
     }
     if (!bulkForm.expected_arrival_date) {
@@ -350,7 +364,7 @@ export function CargoRegistryPage({
             New Cargo
           </button>
           <button
-            onClick={() => setShowBulkCargo(true)}
+            onClick={openBulkCargo}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
             style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
           >
@@ -669,6 +683,17 @@ export function CargoRegistryPage({
                   onChange={(e) => setForm((f) => ({ ...f, container_id: e.target.value }))}
                   className="w-full px-3 py-2 rounded border bg-background text-foreground"
                   style={{ borderColor: 'var(--border)' }}
+                  placeholder="e.g., CONTAINER-2024-001"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">Container Number</label>
+                <input
+                  value={form.container_number}
+                  onChange={(e) => setForm((f) => ({ ...f, container_number: e.target.value }))}
+                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
+                  style={{ borderColor: 'var(--border)' }}
                   placeholder="e.g., MSCU1234567"
                 />
               </div>
@@ -830,19 +855,19 @@ export function CargoRegistryPage({
                     style={{ borderColor: 'var(--border)' }}
                   />
                   <div className="text-xs text-muted-foreground mt-1">
-                    Example: 5 will create BL12345678-001 to BL12345678-005
+                    Example: 5 will create GROUP123-001 to GROUP123-005
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm opacity-70 mb-1">Bill of Lading</label>
+                <label className="block text-sm opacity-70 mb-1">Container Group ID (Bill of Lading)</label>
                 <input
                   value={bulkForm.bill_of_lading}
                   onChange={(e) => setBulkForm((f) => ({ ...f, bill_of_lading: e.target.value }))}
                   className="w-full px-3 py-2 rounded border bg-background text-foreground"
                   style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., BL12345678"
+                  placeholder="e.g., GROUP123"
                 />
               </div>
 
