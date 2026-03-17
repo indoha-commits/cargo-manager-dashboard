@@ -30,7 +30,7 @@ export function PendingDocumentsPage() {
   const [docs, setDocs] = useState<PendingDoc[]>([]);
   const [search, setSearch] = useState('');
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
-  const [expandedCargos, setExpandedCargos] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [verifyState, setVerifyState] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
 
@@ -75,11 +75,11 @@ export function PendingDocumentsPage() {
     const byClient = new Map<string, Map<string, PendingDoc[]>>();
     for (const d of filtered) {
       const clientName = d.client_name ?? 'Unknown Client';
-      const cargoId = d.cargo_id;
+      const groupId = d.bill_of_lading ?? d.cargo_id;
       const cargos = byClient.get(clientName) ?? new Map<string, PendingDoc[]>();
-      const list = cargos.get(cargoId) ?? [];
+      const list = cargos.get(groupId) ?? [];
       list.push(d);
-      cargos.set(cargoId, list);
+      cargos.set(groupId, list);
       byClient.set(clientName, cargos);
     }
 
@@ -104,10 +104,10 @@ export function PendingDocumentsPage() {
     });
   };
 
-  const toggleCargo = (cargoId: string) => {
-    setExpandedCargos((prev) => {
+  const toggleGroup = (billOfLading: string) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(cargoId) ? next.delete(cargoId) : next.add(cargoId);
+      next.has(billOfLading) ? next.delete(billOfLading) : next.add(billOfLading);
       return next;
     });
   };
@@ -218,7 +218,7 @@ export function PendingDocumentsPage() {
                     <div className="px-6 pb-4">
                       <div className="space-y-3">
                         {client.cargos.map((cargo) => {
-                          const cargoOpen = expandedCargos.has(cargo.cargoId);
+                          const cargoOpen = expandedGroups.has(cargo.cargoId);
                           return (
                             <div
                               key={cargo.cargoId}
@@ -226,7 +226,7 @@ export function PendingDocumentsPage() {
                               style={{ borderColor: 'var(--border)' }}
                             >
                               <button
-                                onClick={() => toggleCargo(cargo.cargoId)}
+                                onClick={() => toggleGroup(cargo.cargoId)}
                                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors"
                               >
                                 <div className="flex items-center gap-3">

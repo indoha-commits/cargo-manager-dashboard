@@ -63,6 +63,7 @@ export type OpsPendingDocumentsResponse = {
   documents: Array<{
     id: string;
     cargo_id: string;
+    bill_of_lading: string | null;
     document_type: string;
     status: string;
     drive_url: string | null;
