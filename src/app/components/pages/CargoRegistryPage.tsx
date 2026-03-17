@@ -4,6 +4,7 @@ import {
   createOpsCargo,
   createOpsCargoBulk,
   deleteOpsCargo,
+  deleteOpsCargoGroup,
   getOpsCargoRegistry,
   getOpsClients,
   type OpsCargoRegistryResponse,
@@ -17,13 +18,25 @@ interface CargoRegistryPageProps {
   onAutoOpenConsumed?: () => void;
 }
 
-type Row = OpsCargoRegistryResponse['rows'][number];
+type GroupRow = OpsCargoRegistryResponse['groups'][number];
 
-type ClientGroup = {
+type CargoGroup = {
+  billOfLading: string;
   clientName: string;
   clientId: string;
+  category: string | null;
+  containerCount: number;
+  origin: string | null;
+  destination: string | null;
+  route: string | null;
+  vessel: string | null;
+  expectedArrivalDate: string | null;
+  eta: string | null;
+  createdAt: string;
+  updatedAt: string;
   cargos: Array<{
     cargoId: string;
+    cargoUuid: string;
     createdAt: string;
     latestEvent: string | null;
     latestEventTime: string | null;
@@ -43,9 +56,9 @@ export function CargoRegistryPage({
 }: CargoRegistryPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [groups, setGroups] = useState<CargoGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const [showNewCargo, setShowNewCargo] = useState(false);
   const [showBulkCargo, setShowBulkCargo] = useState(false);
@@ -59,6 +72,11 @@ export function CargoRegistryPage({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ billOfLading: string; clientName: string } | null>(null);
+  const [deleteGroupConfirmText, setDeleteGroupConfirmText] = useState('');
+  const [deleteGroupSubmitting, setDeleteGroupSubmitting] = useState(false);
+  const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
 
   const [form, setForm] = useState<{
     client_id: string;
@@ -100,7 +118,29 @@ export function CargoRegistryPage({
 
   const refresh = async () => {
     const res = await getOpsCargoRegistry();
-    setRows(res.rows ?? []);
+    const mapped = (res.groups ?? []).map((g) => ({
+      billOfLading: g.bill_of_lading,
+      clientId: g.client_id,
+      clientName: g.client_name,
+      category: g.category ?? null,
+      containerCount: g.container_count,
+      origin: g.origin ?? null,
+      destination: g.destination ?? null,
+      route: g.route ?? null,
+      vessel: g.vessel ?? null,
+      expectedArrivalDate: g.expected_arrival_date ?? null,
+      eta: g.eta ?? null,
+      createdAt: g.created_at,
+      updatedAt: g.updated_at,
+      cargos: g.cargos.map((c) => ({
+        cargoId: c.cargo_id,
+        cargoUuid: c.cargo_uuid,
+        createdAt: c.created_at,
+        latestEvent: c.latest_event_type,
+        latestEventTime: c.latest_event_time,
+      })),
+    }));
+    setGroups(mapped);
   };
 
   useEffect(() => {
@@ -111,7 +151,31 @@ export function CargoRegistryPage({
       setError(null);
       try {
         const res = await getOpsCargoRegistry();
-        if (!cancelled) setRows(res.rows ?? []);
+        if (!cancelled) {
+          const mapped = (res.groups ?? []).map((g) => ({
+            billOfLading: g.bill_of_lading,
+            clientId: g.client_id,
+            clientName: g.client_name,
+            category: g.category ?? null,
+            containerCount: g.container_count,
+            origin: g.origin ?? null,
+            destination: g.destination ?? null,
+            route: g.route ?? null,
+            vessel: g.vessel ?? null,
+            expectedArrivalDate: g.expected_arrival_date ?? null,
+            eta: g.eta ?? null,
+            createdAt: g.created_at,
+            updatedAt: g.updated_at,
+            cargos: g.cargos.map((c) => ({
+              cargoId: c.cargo_id,
+              cargoUuid: c.cargo_uuid,
+              createdAt: c.created_at,
+              latestEvent: c.latest_event_type,
+              latestEventTime: c.latest_event_time,
+            })),
+          }));
+          setGroups(mapped);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -138,47 +202,29 @@ export function CargoRegistryPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNewCargoWithClient]);
 
-  const grouped = useMemo<ClientGroup[]>(() => {
+  const grouped = useMemo<CargoGroup[]>(() => {
     const q = searchTerm.trim().toLowerCase();
     const filtered = q
-      ? rows.filter((r) => {
-          const client = (r.client_name ?? '').toLowerCase();
-          const cargo = (r.cargo_id ?? '').toLowerCase();
-          return client.includes(q) || cargo.includes(q);
+      ? groups.filter((g) => {
+          const client = (g.clientName ?? '').toLowerCase();
+          const bol = (g.billOfLading ?? '').toLowerCase();
+          return client.includes(q) || bol.includes(q);
         })
-      : rows;
+      : groups;
 
-    const byClient = new Map<string, ClientGroup>();
-    for (const r of filtered) {
-      const key = r.client_name;
-      const g = byClient.get(key) ?? {
-        clientName: r.client_name,
-        clientId: r.client_id,
-        cargos: [],
-      };
-
-      g.cargos.push({
-        cargoId: r.cargo_id,
-        createdAt: r.created_at,
-        latestEvent: r.latest_event_type,
-        latestEventTime: r.latest_event_time,
-      });
-
-      byClient.set(key, g);
-    }
-
-    return Array.from(byClient.values())
+    return filtered
+      .slice()
       .sort((a, b) => a.clientName.localeCompare(b.clientName))
       .map((g) => ({
         ...g,
         cargos: g.cargos.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
       }));
-  }, [rows, searchTerm]);
+  }, [groups, searchTerm]);
 
-  const toggleClient = (clientName: string) => {
-    setExpandedClients((prev) => {
+  const toggleGroup = (billOfLading: string) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(clientName) ? next.delete(clientName) : next.add(clientName);
+      next.has(billOfLading) ? next.delete(billOfLading) : next.add(billOfLading);
       return next;
     });
   };
@@ -214,11 +260,24 @@ export function CargoRegistryPage({
     setDeleteTarget({ cargoId, clientName });
   };
 
+  const openDeleteCargoGroup = (billOfLading: string, clientName: string) => {
+    setDeleteGroupError(null);
+    setDeleteGroupConfirmText('');
+    setDeleteGroupTarget({ billOfLading, clientName });
+  };
+
   const closeDeleteCargo = () => {
     setDeleteTarget(null);
     setDeleteConfirmText('');
     setDeleteError(null);
     setDeleteSubmitting(false);
+  };
+
+  const closeDeleteCargoGroup = () => {
+    setDeleteGroupTarget(null);
+    setDeleteGroupConfirmText('');
+    setDeleteGroupError(null);
+    setDeleteGroupSubmitting(false);
   };
 
   const confirmDeleteCargo = async () => {
@@ -239,6 +298,27 @@ export function CargoRegistryPage({
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : String(e));
       setDeleteSubmitting(false);
+    }
+  };
+
+  const confirmDeleteCargoGroup = async () => {
+    if (!deleteGroupTarget) return;
+
+    const expected = deleteGroupTarget.billOfLading;
+    if (deleteGroupConfirmText.trim() !== expected) {
+      setDeleteGroupError(`Please type "${expected}" to confirm.`);
+      return;
+    }
+
+    setDeleteGroupSubmitting(true);
+    setDeleteGroupError(null);
+    try {
+      await deleteOpsCargoGroup(deleteGroupTarget.billOfLading);
+      await refresh();
+      closeDeleteCargoGroup();
+    } catch (e) {
+      setDeleteGroupError(e instanceof Error ? e.message : String(e));
+      setDeleteGroupSubmitting(false);
     }
   };
 
@@ -344,7 +424,9 @@ export function CargoRegistryPage({
     }
   };
 
-  const totalCargos = rows.length;
+  const totalCargos = groups.reduce((sum, g) => sum + g.cargos.length, 0);
+
+  const formatTimestamp = (value?: string | null) => (value ? new Date(value).toLocaleString() : '—');
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -386,7 +468,7 @@ export function CargoRegistryPage({
             style={{ borderColor: 'var(--border)' }}
           />
         </div>
-        <div className="text-sm opacity-60 sm:whitespace-nowrap">{totalCargos} cargos</div>
+        <div className="text-sm opacity-60 sm:whitespace-nowrap">{totalCargos} containers • {grouped.length} groups</div>
       </div>
 
       <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
@@ -400,20 +482,22 @@ export function CargoRegistryPage({
           <div className="px-6 py-8 text-sm opacity-60">No cargos found.</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {grouped.map((client) => {
-              const open = expandedClients.has(client.clientName);
+            {grouped.map((group) => {
+              const open = expandedGroups.has(group.billOfLading);
 
               return (
-                <div key={client.clientId}>
+                <div key={group.billOfLading}>
                   <button
-                    onClick={() => toggleClient(client.clientName)}
+                    onClick={() => toggleGroup(group.billOfLading)}
                     className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/20 transition-colors"
                   >
                     <div className="text-left">
                       <div className="text-sm" style={{ fontWeight: 600 }}>
-                        {client.clientName}
+                        {group.billOfLading}
                       </div>
-                      <div className="text-xs opacity-60 mt-1">{client.cargos.length} cargos</div>
+                      <div className="text-xs opacity-60 mt-1">
+                        {group.clientName} • {group.cargos.length} containers
+                      </div>
                     </div>
                     <div className="text-sm opacity-60">{open ? '−' : '+'}</div>
                   </button>
@@ -422,7 +506,7 @@ export function CargoRegistryPage({
                     <div className="px-6 pb-4">
                       {/* Mobile: card list */}
                       <div className="sm:hidden space-y-3">
-                        {client.cargos.map((c) => (
+                        {group.cargos.map((c) => (
                           <div
                             key={c.cargoId}
                             className="rounded-lg border p-3 sm:p-4"
@@ -432,11 +516,8 @@ export function CargoRegistryPage({
                               <div className="font-mono text-sm sm:text-base" style={{ color: 'var(--primary)' }}>
                                 {c.cargoId}
                               </div>
-                              <div className="text-xs opacity-60 mt-1">Created {new Date(c.createdAt).toLocaleString()}</div>
-                              <div className="text-xs opacity-60 mt-1">
-                                Latest {formatEvent(c.latestEvent)}
-                                {c.latestEventTime ? ` @ ${new Date(c.latestEventTime).toLocaleString()}` : ''}
-                              </div>
+                              <div className="text-xs opacity-60 mt-1">Last update {formatTimestamp(c.latestEventTime)}</div>
+                              <div className="text-xs opacity-60 mt-1">Stage: {formatEvent(c.latestEvent)}</div>
                             </div>
 
                             <div className="mt-3 grid grid-cols-1 gap-2">
@@ -450,11 +531,19 @@ export function CargoRegistryPage({
                               </button>
 
                               <button
-                                onClick={() => openDeleteCargo(c.cargoId, client.clientName)}
+                                onClick={() => openDeleteCargo(c.cargoId, group.clientName)}
                                 className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border text-sm"
                                 style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
                               >
                                 Remove container
+                              </button>
+
+                              <button
+                                onClick={() => openDeleteCargoGroup(group.billOfLading, group.clientName)}
+                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border text-sm"
+                                style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                              >
+                                Remove container group
                               </button>
                             </div>
                           </div>
@@ -464,16 +553,14 @@ export function CargoRegistryPage({
                       {/* Tablet/Desktop: dense list */}
                       <div className="hidden sm:block rounded border" style={{ borderColor: 'var(--border)' }}>
                         <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                          {client.cargos.map((c) => (
+                          {group.cargos.map((c) => (
                             <div key={c.cargoId} className="px-4 py-3 flex items-center justify-between gap-4">
                               <div>
                                 <div className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
                                   {c.cargoId}
                                 </div>
-                                <div className="text-xs opacity-60 mt-1">
-                                  Created {new Date(c.createdAt).toLocaleString()} · Latest {formatEvent(c.latestEvent)}
-                                  {c.latestEventTime ? ` @ ${new Date(c.latestEventTime).toLocaleString()}` : ''}
-                                </div>
+                                <div className="text-xs opacity-60 mt-1">Last update {formatTimestamp(c.latestEventTime)}</div>
+                                <div className="text-xs opacity-60 mt-1">Stage: {formatEvent(c.latestEvent)}</div>
                               </div>
 
                               <div className="flex items-center gap-2">
@@ -487,11 +574,19 @@ export function CargoRegistryPage({
                                 </button>
 
                                 <button
-                                  onClick={() => openDeleteCargo(c.cargoId, client.clientName)}
+                                  onClick={() => openDeleteCargo(c.cargoId, group.clientName)}
                                   className="inline-flex items-center gap-2 px-3 py-2 rounded border text-sm"
                                   style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
                                 >
                                   Remove container
+                                </button>
+
+                                <button
+                                  onClick={() => openDeleteCargoGroup(group.billOfLading, group.clientName)}
+                                  className="inline-flex items-center gap-2 px-3 py-2 rounded border text-sm"
+                                  style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                >
+                                  Remove container group
                                 </button>
                               </div>
                             </div>
@@ -579,6 +674,78 @@ export function CargoRegistryPage({
                   disabled={deleteSubmitting || deleteConfirmText.trim() !== deleteTarget.cargoId}
                 >
                   {deleteSubmitting ? 'Deleting…' : 'I understand, delete this container'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteGroupTarget && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-6" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
+          <div className="bg-card rounded-lg border w-full max-w-2xl" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-6 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--destructive)' }}>
+                  Delete container group
+                </h2>
+                <p className="text-sm opacity-70 mt-1">
+                  This will permanently delete all containers in <span className="font-mono">{deleteGroupTarget.billOfLading}</span>.
+                </p>
+              </div>
+              <button onClick={closeDeleteCargoGroup} className="p-2 rounded border" style={{ borderColor: 'var(--border)' }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="rounded border p-4" style={{ borderColor: 'var(--destructive)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                <div className="text-sm" style={{ fontWeight: 600, color: 'var(--destructive)' }}>
+                  Warning
+                </div>
+                <div className="text-sm opacity-80 mt-1">
+                  This action cannot be undone. It will delete every container in the group.
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm opacity-70 mb-1">
+                  To confirm, type <span className="font-mono">{deleteGroupTarget.billOfLading}</span>
+                </label>
+                <input
+                  value={deleteGroupConfirmText}
+                  onChange={(e) => setDeleteGroupConfirmText(e.target.value)}
+                  className="w-full px-3 py-2 rounded border bg-transparent font-mono"
+                  style={{ borderColor: 'var(--border)' }}
+                  placeholder={deleteGroupTarget.billOfLading}
+                  disabled={deleteGroupSubmitting}
+                />
+              </div>
+
+              {deleteGroupError && (
+                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
+                  {deleteGroupError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteCargoGroup}
+                  className="px-4 py-2 rounded border"
+                  style={{ borderColor: 'var(--border)' }}
+                  disabled={deleteGroupSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteCargoGroup}
+                  className="px-4 py-2 rounded border disabled:opacity-60"
+                  style={{ borderColor: 'var(--destructive)', color: 'white', backgroundColor: 'var(--destructive)' }}
+                  disabled={deleteGroupSubmitting || deleteGroupConfirmText.trim() !== deleteGroupTarget.billOfLading}
+                >
+                  {deleteGroupSubmitting ? 'Deleting…' : 'I understand, delete this group'}
                 </button>
               </div>
             </div>

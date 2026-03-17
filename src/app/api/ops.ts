@@ -78,13 +78,27 @@ export async function getOpsPendingDocuments(): Promise<OpsPendingDocumentsRespo
 }
 
 export type OpsCargoRegistryResponse = {
-  rows: Array<{
+  groups: Array<{
+    bill_of_lading: string;
     client_id: string;
     client_name: string;
-    cargo_id: string;
+    category: string | null;
+    container_count: number;
+    origin: string | null;
+    destination: string | null;
+    route: string | null;
+    vessel: string | null;
+    expected_arrival_date: string | null;
+    eta: string | null;
     created_at: string;
-    latest_event_type: string | null;
-    latest_event_time: string | null;
+    updated_at: string;
+    cargos: Array<{
+      cargo_id: string;
+      cargo_uuid: string;
+      created_at: string;
+      latest_event_type: string | null;
+      latest_event_time: string | null;
+    }>;
   }>;
 };
 
@@ -326,6 +340,15 @@ export async function deleteOpsCargo(cargoId: string): Promise<OpsDeleteCargoRes
   return await fetchJson<OpsDeleteCargoResponse>(`/ops/cargo/${encodeURIComponent(cargoId)}`, {
     method: 'DELETE',
   });
+}
+
+export async function deleteOpsCargoGroup(billOfLading: string): Promise<{ ok: boolean; bill_of_lading: string; deleted: number }> {
+  return await fetchJson<{ ok: boolean; bill_of_lading: string; deleted: number }>(
+    `/ops/cargo-group/${encodeURIComponent(billOfLading)}`,
+    {
+      method: 'DELETE',
+    }
+  );
 }
 
 export type OpsCreateApprovalUploadUrlRequest = {
