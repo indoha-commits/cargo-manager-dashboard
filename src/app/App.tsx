@@ -15,7 +15,6 @@ import { CargoRegistryPage } from '@/app/components/pages/CargoRegistryPage';
 import { CreateClientPage } from '@/app/components/pages/CreateClientPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
-import { DataSourceSetup } from '@/app/components/DataSourceSetup';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -161,7 +160,8 @@ export default function App() {
 
   // Gate: show data source setup until connected
   if (dataSourceConnected === false) {
-    return <DataSourceSetup onComplete={() => setDataSourceConnected(true)} />;
+    // External data sources disabled; skip setup
+    return <>{children}</>;
   }
 
   if (dataSourceConnected === null) {
