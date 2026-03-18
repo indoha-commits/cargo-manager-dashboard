@@ -21,6 +21,7 @@ import { fetchJson } from '@/app/api/client';
 type OpsPageId =
   | 'dashboard'
   | 'pending-documents'
+  | 'validation-requests'
   | 'validation'
   | 'operations-update'
   | 'import-cargo'
@@ -32,6 +33,7 @@ type OpsPageId =
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
   'pending-documents': 'pending-documents',
+  'validation-requests': 'validation-requests',
   validation: 'validation',
   'operations-update': 'operations-update',
   'import-cargo': 'import-cargo',
@@ -44,6 +46,7 @@ const pageToPath: Record<OpsPageId, string> = {
 const pathToPage: Record<string, OpsPageId> = {
   '': 'dashboard',
   'pending-documents': 'pending-documents',
+  'validation-requests': 'validation-requests',
   validation: 'validation',
   'operations-update': 'operations-update',
   'import-cargo': 'import-cargo',
