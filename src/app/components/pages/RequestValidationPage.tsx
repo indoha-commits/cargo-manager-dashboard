@@ -188,6 +188,7 @@ export function RequestValidationPage() {
                 value={rejectDialog.reason}
                 onChange={(e) => setRejectDialog({ ...rejectDialog, reason: e.target.value })}
                 placeholder="Reason"
+                className="bg-background text-foreground"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setRejectDialog(null)}>Cancel</Button>
