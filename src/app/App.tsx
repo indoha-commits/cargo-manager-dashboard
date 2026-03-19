@@ -242,7 +242,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="/:pageSlug"
-            element={<OpsPageRenderer currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
+            element={<OpsPageRenderer key={currentPageMemo} currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
