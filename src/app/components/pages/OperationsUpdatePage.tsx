@@ -5,7 +5,7 @@ import { getOpsValidationQueue, recordOpsCargoEvent } from '@/app/api/ops';
 interface PendingAction {
   cargoId: string;
   containerId: string;
-  actionType: 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL';
+  actionType: 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO';
   currentStatus: string;
   lastEventTime: string;
   clientName: string;
@@ -17,11 +17,11 @@ export function OperationsUpdatePage() {
   const [loading, setLoading] = useState(true);
   const [completedActions, setCompletedActions] = useState<string[]>([]);
   const [completedRecords, setCompletedRecords] = useState<PendingAction[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cargoOptions, setCargoOptions] = useState<PendingAction[]>([]);
   const [selectedCargoId, setSelectedCargoId] = useState('');
-  const [selectedActionType, setSelectedActionType] = useState<'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL'>('PHYSICAL_VERIFICATION');
+  const [selectedActionType, setSelectedActionType] = useState<'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO'>('PHYSICAL_VERIFICATION');
 
   useEffect(() => {
     let cancelled = false;
@@ -142,12 +142,15 @@ export function OperationsUpdatePage() {
           </select>
           <select
             value={selectedActionType}
-            onChange={(e) => setSelectedActionType(e.target.value as 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL')}
+            onChange={(e) => setSelectedActionType(e.target.value as 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO')}
             className="px-3 py-2 rounded border text-sm"
             style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
           >
-            <option value="PHYSICAL_VERIFICATION">Physical Verification</option>
-            <option value="WAREHOUSE_ARRIVAL">Warehouse Arrival</option>
+            {manualActionOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
           <button
             type="button"
@@ -187,7 +190,7 @@ export function OperationsUpdatePage() {
             }}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilterType('all')}
             className="px-4 py-2.5 rounded-lg text-sm transition-colors"
@@ -218,6 +221,26 @@ export function OperationsUpdatePage() {
             }}
           >
             Warehouse Arrival
+          </button>
+          <button
+            onClick={() => setFilterType('DEPARTED_PORT')}
+            className="px-4 py-2.5 rounded-lg text-sm transition-colors"
+            style={{
+              backgroundColor: filterType === 'DEPARTED_PORT' ? 'var(--primary)' : 'var(--muted)',
+              color: filterType === 'DEPARTED_PORT' ? 'var(--primary-foreground)' : 'var(--foreground)',
+            }}
+          >
+            Departed from Port
+          </button>
+          <button
+            onClick={() => setFilterType('IN_ROUTE_RUSUMO')}
+            className="px-4 py-2.5 rounded-lg text-sm transition-colors"
+            style={{
+              backgroundColor: filterType === 'IN_ROUTE_RUSUMO' ? 'var(--primary)' : 'var(--muted)',
+              color: filterType === 'IN_ROUTE_RUSUMO' ? 'var(--primary-foreground)' : 'var(--foreground)',
+            }}
+          >
+            In Route to Rusumo
           </button>
         </div>
       </div>
@@ -395,7 +418,14 @@ export function OperationsUpdatePage() {
                       >
                         <CheckCircle className="w-4 h-4" />
                         <span>
-                          Record {action.actionType === 'PHYSICAL_VERIFICATION' ? 'Verification' : 'Arrival'}
+                          Record{' '}
+                          {action.actionType === 'PHYSICAL_VERIFICATION'
+                            ? 'Verification'
+                            : action.actionType === 'WAREHOUSE_ARRIVAL'
+                              ? 'Arrival'
+                              : action.actionType === 'DEPARTED_PORT'
+                                ? 'Departed from Port'
+                                : 'In Route to Rusumo'}
                         </span>
                       </button>
                     )}
