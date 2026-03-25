@@ -171,7 +171,7 @@ export function ImportCargoPage() {
     setSubmitting(true);
     try {
       // Register cargo first
-      const data = await fetchJson<{ cargo_id: string }>(`/ops/cargo/register`, {
+      const data = await fetchJson<{ cargo_id: string; container_id: string }>(`/ops/cargo/register`, {
         method: 'POST',
         body: JSON.stringify({
           client_id: selectedClientId,
@@ -182,8 +182,8 @@ export function ImportCargoPage() {
         }),
       });
       
-      const cargoId = data.cargo_id;
-      console.log(`[REGISTER] Cargo registered: ${cargoId}`);
+      const cargoId = data.container_id; // Use container_id (user input) not UUID
+      console.log(`[REGISTER] Cargo registered: ${cargoId} (UUID: ${data.cargo_id})`);
       
       // Upload required documents
       console.log(`[REGISTER] Uploading ${Object.keys(uploadedFiles).length} required documents...`);
@@ -224,7 +224,7 @@ export function ImportCargoPage() {
         }
       }
       
-      setSuccess(`Cargo ${cargoId} registered successfully${needsAssessment ? ' with customs clearance documents' : ''}`);
+      setSuccess(`Cargo ${selectedCargoId} registered successfully${needsAssessment ? ' with customs clearance documents' : ''}`);
       
       // Reset form
       setShowUploadForm(false);
