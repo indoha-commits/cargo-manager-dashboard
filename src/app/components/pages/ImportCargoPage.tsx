@@ -36,21 +36,11 @@ export function ImportCargoPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!category) {
-        setClients([]);
-        setSelectedClientId('');
-        setSelectedCargoId('');
-        setLoadingClients(false);
-        return;
-      }
-
       try {
         setLoadingClients(true);
         setError(null);
-        const res = await getOpsClients(category);
+        const res = await getOpsClients();
         setClients(res.clients);
-        setSelectedClientId('');
-        setSelectedCargoId('');
       } catch (e) {
         setError(String(e));
       } finally {
@@ -59,7 +49,7 @@ export function ImportCargoPage() {
     };
 
     void load();
-  }, [category]);
+  }, []);
 
   const onSubmit = async () => {
     setError(null);
@@ -153,8 +143,7 @@ export function ImportCargoPage() {
                 <select
                   value={selectedClientId}
                   onChange={(e) => setSelectedClientId(e.target.value)}
-                  disabled={!category}
-                  className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none disabled:opacity-60"
+                  className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none"
                   style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
                 >
                   <option value="">Select client</option>
@@ -177,7 +166,7 @@ export function ImportCargoPage() {
               type="text"
               value={selectedCargoId}
               onChange={(e) => setSelectedCargoId(e.target.value)}
-              disabled={!category || !selectedClientId}
+              disabled={!selectedClientId}
               placeholder={cargoIdPlaceholder}
               className="w-full px-4 py-2.5 rounded-md border text-sm disabled:opacity-60"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
