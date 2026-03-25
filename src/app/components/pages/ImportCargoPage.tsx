@@ -27,6 +27,7 @@ export function ImportCargoPage() {
 
   const [docsVerifiedAt, setDocsVerifiedAt] = useState<string>('');
   const [importedAt, setImportedAt] = useState<string>('');
+  const [startingMilestone, setStartingMilestone] = useState<'DOCS_UPLOADED' | 'DOCS_VERIFIED' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL'>('DOCS_UPLOADED');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +118,7 @@ export function ImportCargoPage() {
           category,
           docs_verified_at: docsVerifiedAt ? new Date(docsVerifiedAt).toISOString() : null,
           imported_at: importedAt ? new Date(importedAt).toISOString() : null,
+          starting_milestone: startingMilestone,
         }),
       });
       setSuccess(`Imported cargo ${data.cargo_id}`);
@@ -257,6 +259,28 @@ export function ImportCargoPage() {
               className="w-full px-4 py-2.5 rounded-md border text-sm"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
+              Starting Milestone
+            </label>
+            <div className="relative">
+              <select
+                value={startingMilestone}
+                onChange={(e) => setStartingMilestone(e.target.value as any)}
+                className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none"
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+              >
+                <option value="DOCS_UPLOADED">Docs Uploaded</option>
+                <option value="DOCS_VERIFIED">Docs Verified</option>
+                <option value="DEPARTED_PORT">Departed from Port</option>
+                <option value="IN_ROUTE_RUSUMO">In Route to Rusumo</option>
+                <option value="PHYSICAL_VERIFICATION">Physical Verification</option>
+                <option value="WAREHOUSE_ARRIVAL">Warehouse Arrival</option>
+              </select>
+              <ChevronDown className="w-4 h-4 opacity-50 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
 
           <div className="col-span-2">
