@@ -29,6 +29,9 @@ export function ImportCargoPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  const [registeredCargoId, setRegisteredCargoId] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
   const cargoIdPlaceholder = category ? `Enter cargo ID (${category})` : 'Enter cargo ID';
@@ -80,7 +83,7 @@ export function ImportCargoPage() {
     setSubmitting(true);
     try {
       // Use worker endpoint directly (already implemented)
-      const data = await fetchJson<{ cargo_id: string }>(`/ops/cargo/import-from-drive`, {
+      const data = await fetchJson<{ cargo_id: string }>(`/ops/cargo/register`, {
         method: 'POST',
         body: JSON.stringify({
           client_id: selectedClientId,
@@ -90,7 +93,11 @@ export function ImportCargoPage() {
           starting_milestone: startingMilestone,
         }),
       });
-      setSuccess(`Saved cargo ${data.cargo_id}`);
+      
+      // Show upload modal after successful registration
+      setRegisteredCargoId(data.cargo_id);
+      setShowUploadModal(true);
+      setSuccess(`Cargo ${data.cargo_id} registered successfully`);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -257,7 +264,67 @@ export function ImportCargoPage() {
             {submitting ? 'Saving…' : 'Register Cargo'}
           </button>
         </div>
+
+        {error && (
+          <div className="mt-4 p-3 rounded-md border border-red-300 bg-red-50 text-red-800 text-sm">{error}</div>
+        )}
+        {success && (
+          <div className="mt-4 p-3 rounded-md border border-green-300 bg-green-50 text-green-800 text-sm">{success}</div>
+        )}
       </div>
+
+      {/* Document Upload Modal */}
+      {showUploadModal && registeredCargoId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
+            <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="text-xl font-semibold">Upload Documents for {registeredCargoId}</h2>
+              <p className="text-sm opacity-60 mt-1">
+                {startingMilestone === 'DOCS_UPLOADED' 
+                  ? 'Upload the required documents below.'
+                  : 'Documents are marked as verified. You can upload them now or later.'}
+              </p>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                {requiredDocs.map((docType) => (
+                  <div key={docType} className="border rounded-md p-4" style={{ borderColor: 'var(--border)' }}>
+                    <div className="text-sm font-medium mb-2">{docType}</div>
+                    <input
+                      type="file"
+                      className="text-sm w-full"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setRegisteredCargoId(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-md border text-sm"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  Skip for Now
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setRegisteredCargoId(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-md text-sm text-white"
+                  style={{ backgroundColor: 'var(--primary)' }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
