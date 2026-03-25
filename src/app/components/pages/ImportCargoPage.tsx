@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 import { getOpsClients } from '@/app/api/ops';
 import { fetchJson } from '@/app/api/client';
@@ -21,8 +21,6 @@ export function ImportCargoPage() {
   const [loadingClients, setLoadingClients] = useState(true);
 
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [cargos, setCargos] = useState<string[]>([]);
-  const [loadingCargos, setLoadingCargos] = useState(false);
   const [selectedCargoId, setSelectedCargoId] = useState<string>('');
 
   const [docsVerifiedAt, setDocsVerifiedAt] = useState<string>('');
@@ -34,13 +32,13 @@ export function ImportCargoPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
+  const cargoIdPlaceholder = category ? `Enter cargo ID (${category})` : 'Enter cargo ID';
 
   useEffect(() => {
     const load = async () => {
       if (!category) {
         setClients([]);
         setSelectedClientId('');
-        setCargos([]);
         setSelectedCargoId('');
         setLoadingClients(false);
         return;
@@ -52,7 +50,6 @@ export function ImportCargoPage() {
         const res = await getOpsClients(category);
         setClients(res.clients);
         setSelectedClientId('');
-        setCargos([]);
         setSelectedCargoId('');
       } catch (e) {
         setError(String(e));
@@ -64,41 +61,13 @@ export function ImportCargoPage() {
     void load();
   }, [category]);
 
-  useEffect(() => {
-    const loadCargos = async () => {
-      if (!category || !selectedClientId) {
-        setCargos([]);
-        setSelectedCargoId('');
-        return;
-      }
-
-      try {
-        setLoadingCargos(true);
-        setError(null);
-
-        const data = await fetchJson<{ cargos: string[] }>(
-          `/ops/drive/client/${encodeURIComponent(selectedClientId)}/cargos?category=${encodeURIComponent(category)}`,
-          { method: 'GET' }
-        );
-        setCargos(data.cargos ?? []);
-      } catch (e) {
-        setError(String(e));
-        setCargos([]);
-      } finally {
-        setLoadingCargos(false);
-      }
-    };
-
-    void loadCargos();
-  }, [category, selectedClientId]);
-
   const onSubmit = async () => {
     setError(null);
     setSuccess(null);
 
     if (!category) return setError('Select a category');
     if (!selectedClientId) return setError('Select a client');
-    if (!selectedCargoId) return setError('Select a cargo');
+    if (!selectedCargoId.trim()) return setError('Enter a cargo ID');
 
     setSubmitting(true);
     try {
@@ -145,6 +114,9 @@ export function ImportCargoPage() {
 
       <div className="bg-card rounded-lg border p-6" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-2 gap-6">
+          <div className="col-span-2 text-xs opacity-70">
+            Cargo IDs are provided by your shipment records. We no longer pull cargo IDs from Google Drive.
+          </div>
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
               Category
@@ -175,9 +147,7 @@ export function ImportCargoPage() {
               Client
             </label>
             {loadingClients ? (
-              <div className="flex items-center gap-2 text-sm opacity-60">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading clients…
-              </div>
+              <div className="flex items-center gap-2 text-sm opacity-60">Loading clients…</div>
             ) : (
               <div className="relative">
                 <select
@@ -201,31 +171,17 @@ export function ImportCargoPage() {
 
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
-              Cargo ID (from Drive)
+              Cargo ID
             </label>
-            {loadingCargos ? (
-              <div className="flex items-center gap-2 text-sm opacity-60">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading cargos…
-              </div>
-            ) : (
-              <div className="relative">
-                <select
-                  value={selectedCargoId}
-                  onChange={(e) => setSelectedCargoId(e.target.value)}
-                  disabled={!category || !selectedClientId}
-                  className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none disabled:opacity-60"
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
-                >
-                  <option value="">Select cargo</option>
-                  {cargos.map((id) => (
-                    <option key={id} value={id}>
-                      {id}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 opacity-50 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            )}
+            <input
+              type="text"
+              value={selectedCargoId}
+              onChange={(e) => setSelectedCargoId(e.target.value)}
+              disabled={!category || !selectedClientId}
+              placeholder={cargoIdPlaceholder}
+              className="w-full px-4 py-2.5 rounded-md border text-sm disabled:opacity-60"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+            />
           </div>
 
           <div>
