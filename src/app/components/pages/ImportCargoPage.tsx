@@ -23,8 +23,7 @@ export function ImportCargoPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedCargoId, setSelectedCargoId] = useState<string>('');
 
-  const [docsVerifiedAt, setDocsVerifiedAt] = useState<string>('');
-  const [importedAt, setImportedAt] = useState<string>('');
+  const [milestoneCompletedAt, setMilestoneCompletedAt] = useState<string>('');
   const [startingMilestone, setStartingMilestone] = useState<'DOCS_UPLOADED' | 'DOCS_VERIFIED' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL'>('DOCS_UPLOADED');
 
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +32,25 @@ export function ImportCargoPage() {
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
   const cargoIdPlaceholder = category ? `Enter cargo ID (${category})` : 'Enter cargo ID';
+  
+  const milestoneDateLabel = useMemo(() => {
+    switch (startingMilestone) {
+      case 'DOCS_UPLOADED':
+        return 'Docs Uploaded At (optional)';
+      case 'DOCS_VERIFIED':
+        return 'Docs Verified At (optional)';
+      case 'DEPARTED_PORT':
+        return 'Departed from Port At (optional)';
+      case 'IN_ROUTE_RUSUMO':
+        return 'Started Route to Rusumo At (optional)';
+      case 'PHYSICAL_VERIFICATION':
+        return 'Physical Verification At (optional)';
+      case 'WAREHOUSE_ARRIVAL':
+        return 'Warehouse Arrival At (optional)';
+      default:
+        return 'Milestone Completed At (optional)';
+    }
+  }, [startingMilestone]);
 
   useEffect(() => {
     const load = async () => {
@@ -68,8 +86,7 @@ export function ImportCargoPage() {
           client_id: selectedClientId,
           cargo_id: selectedCargoId,
           category,
-          docs_verified_at: docsVerifiedAt ? new Date(docsVerifiedAt).toISOString() : null,
-          imported_at: importedAt ? new Date(importedAt).toISOString() : null,
+          milestone_completed_at: milestoneCompletedAt ? new Date(milestoneCompletedAt).toISOString() : null,
           starting_milestone: startingMilestone,
         }),
       });
@@ -175,28 +192,16 @@ export function ImportCargoPage() {
 
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
-              Docs Verified At (optional)
+              {milestoneDateLabel}
             </label>
             <input
               type="datetime-local"
-              value={docsVerifiedAt}
-              onChange={(e) => setDocsVerifiedAt(e.target.value)}
+              value={milestoneCompletedAt}
+              onChange={(e) => setMilestoneCompletedAt(e.target.value)}
               className="w-full px-4 py-2.5 rounded-md border text-sm"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
-              Imported At (optional)
-            </label>
-            <input
-              type="datetime-local"
-              value={importedAt}
-              onChange={(e) => setImportedAt(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-md border text-sm"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
-            />
+            <p className="text-xs opacity-60 mt-1">Optional. Leave blank to use current date/time.</p>
           </div>
 
           <div>
