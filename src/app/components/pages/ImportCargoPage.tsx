@@ -35,8 +35,11 @@ export function ImportCargoPage() {
   const [draggedOver, setDraggedOver] = useState<string | null>(null);
   
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+  const [wh7File, setWh7File] = useState<File | null>(null);
   const [assessmentFile, setAssessmentFile] = useState<File | null>(null);
-  const [warehouseExitFile, setWarehouseExitFile] = useState<File | null>(null);
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+  const [t1File, setT1File] = useState<File | null>(null);
+  const [exitNoteFile, setExitNoteFile] = useState<File | null>(null);
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
   const cargoIdPlaceholder = category ? `Enter cargo ID (${category})` : 'Enter cargo ID';
@@ -63,6 +66,39 @@ export function ImportCargoPage() {
   const needsAssessment = useMemo(() => {
     return ['DEPARTED_PORT', 'IN_ROUTE_RUSUMO', 'PHYSICAL_VERIFICATION', 'WAREHOUSE_ARRIVAL'].includes(startingMilestone);
   }, [startingMilestone]);
+  
+  const renderFileUpload = (label: string, file: File | null, setFile: (file: File | null) => void) => (
+    <div className="border rounded-lg p-5" style={{ borderColor: file ? 'var(--gold-accent)' : 'var(--border)', backgroundColor: file ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <File className="w-4 h-4 opacity-60" />
+          <span className="text-sm font-medium">{label}</span>
+        </div>
+        {file && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+      </div>
+      <label className="block cursor-pointer">
+        <div className="border-2 border-dashed rounded-lg p-6 text-center transition-all hover:border-opacity-60" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
+          {file ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-sm font-medium" style={{ color: 'var(--gold-accent)' }}>
+                <File className="w-5 h-5" />
+                <span>{file.name}</span>
+              </div>
+              <div className="text-xs opacity-60">{(file.size / 1024).toFixed(1)} KB</div>
+              <button type="button" onClick={(e) => { e.preventDefault(); setFile(null); }} className="text-xs text-red-600 hover:text-red-700 underline mt-2">Remove</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Upload className="w-8 h-8 mx-auto opacity-40" />
+              <div className="text-sm font-medium opacity-70">Click to upload {label}</div>
+              <div className="text-xs opacity-50">PDF, DOC, DOCX, JPG, PNG (max 10MB)</div>
+            </div>
+          )}
+        </div>
+        <input type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      </label>
+    </div>
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -154,26 +190,26 @@ export function ImportCargoPage() {
         });
       }
       
-      // Upload assessment documents if needed
+      // Upload customs clearance documents if needed
       if (needsAssessment) {
-        if (assessmentFile) {
-          const path = `cargo/${cargoId}/approvals/assessment/${assessmentFile.name}`;
-          await uploadFileToStorage(assessmentFile, path);
-          
-          await fetchJson(`/ops/cargo/${cargoId}/approvals`, {
-            method: 'POST',
-            body: JSON.stringify({ kind: 'ASSESSMENT', file_path: path, notes: 'Draft assessment uploaded' }),
-          });
-        }
+        const customsDocs = [
+          { file: wh7File, kind: 'WH7', notes: 'WH7 form uploaded' },
+          { file: assessmentFile, kind: 'ASSESSMENT', notes: 'Assessment uploaded' },
+          { file: draftFile, kind: 'DRAFT', notes: 'Draft uploaded' },
+          { file: t1File, kind: 'T1', notes: 'T1 form uploaded' },
+          { file: exitNoteFile, kind: 'EXIT_NOTE', notes: 'Exit note uploaded' },
+        ];
         
-        if (warehouseExitFile) {
-          const path = `cargo/${cargoId}/approvals/exit-note/${warehouseExitFile.name}`;
-          await uploadFileToStorage(warehouseExitFile, path);
-          
-          await fetchJson(`/ops/cargo/${cargoId}/approvals`, {
-            method: 'POST',
-            body: JSON.stringify({ kind: 'EXIT_NOTE', file_path: path, notes: 'Warehouse exit note uploaded' }),
-          });
+        for (const doc of customsDocs) {
+          if (doc.file) {
+            const path = `cargo/${cargoId}/approvals/${doc.kind.toLowerCase()}/${doc.file.name}`;
+            await uploadFileToStorage(doc.file, path);
+            
+            await fetchJson(`/ops/cargo/${cargoId}/approvals`, {
+              method: 'POST',
+              body: JSON.stringify({ kind: doc.kind, file_path: path, notes: doc.notes }),
+            });
+          }
         }
       }
       
@@ -183,8 +219,11 @@ export function ImportCargoPage() {
       setShowUploadForm(false);
       setShowAssessmentForm(false);
       setUploadedFiles({});
+      setWh7File(null);
       setAssessmentFile(null);
-      setWarehouseExitFile(null);
+      setDraftFile(null);
+      setT1File(null);
+      setExitNoteFile(null);
       setSelectedCargoId('');
       setMilestoneCompletedAt('');
     } catch (e) {
@@ -512,76 +551,29 @@ export function ImportCargoPage() {
                 <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold">Draft Assessment and Warehouse Exit Note</h3>
-                      <p className="text-sm opacity-60 mt-1">Upload the required documents for customs clearance.</p>
+                      <h3 className="text-lg font-semibold">Customs Clearance Documents</h3>
+                      <p className="text-sm opacity-60 mt-1">Upload WH7, Assessment, Draft, T1, and Exit Note documents.</p>
                     </div>
                     <div className="text-sm font-medium px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--gold-accent)', color: 'var(--navy-deep)' }}>
-                      {(assessmentFile ? 1 : 0) + (warehouseExitFile ? 1 : 0)} / 2 files
+                      {(wh7File ? 1 : 0) + (assessmentFile ? 1 : 0) + (draftFile ? 1 : 0) + (t1File ? 1 : 0) + (exitNoteFile ? 1 : 0)} / 5 files
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="border rounded-lg p-5" style={{ borderColor: assessmentFile ? 'var(--gold-accent)' : 'var(--border)', backgroundColor: assessmentFile ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <File className="w-4 h-4 opacity-60" />
-                          <span className="text-sm font-medium">Draft Assessment</span>
-                        </div>
-                        {assessmentFile && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                      </div>
-                      <label className="block cursor-pointer">
-                        <div className="border-2 border-dashed rounded-lg p-6 text-center transition-all hover:border-opacity-60" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
-                          {assessmentFile ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-center gap-2 text-sm font-medium" style={{ color: 'var(--gold-accent)' }}>
-                                <File className="w-5 h-5" />
-                                <span>{assessmentFile.name}</span>
-                              </div>
-                              <div className="text-xs opacity-60">{(assessmentFile.size / 1024).toFixed(1)} KB</div>
-                              <button type="button" onClick={(e) => { e.preventDefault(); setAssessmentFile(null); }} className="text-xs text-red-600 hover:text-red-700 underline mt-2">Remove</button>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <Upload className="w-8 h-8 mx-auto opacity-40" />
-                              <div className="text-sm font-medium opacity-70">Click to upload draft assessment</div>
-                              <div className="text-xs opacity-50">PDF, DOC, DOCX (max 10MB)</div>
-                            </div>
-                          )}
-                        </div>
-                        <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={(e) => setAssessmentFile(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-
-                    <div className="border rounded-lg p-5" style={{ borderColor: warehouseExitFile ? 'var(--gold-accent)' : 'var(--border)', backgroundColor: warehouseExitFile ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <File className="w-4 h-4 opacity-60" />
-                          <span className="text-sm font-medium">Warehouse Exit Note</span>
-                        </div>
-                        {warehouseExitFile && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                      </div>
-                      <label className="block cursor-pointer">
-                        <div className="border-2 border-dashed rounded-lg p-6 text-center transition-all hover:border-opacity-60" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
-                          {warehouseExitFile ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-center gap-2 text-sm font-medium" style={{ color: 'var(--gold-accent)' }}>
-                                <File className="w-5 h-5" />
-                                <span>{warehouseExitFile.name}</span>
-                              </div>
-                              <div className="text-xs opacity-60">{(warehouseExitFile.size / 1024).toFixed(1)} KB</div>
-                              <button type="button" onClick={(e) => { e.preventDefault(); setWarehouseExitFile(null); }} className="text-xs text-red-600 hover:text-red-700 underline mt-2">Remove</button>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <Upload className="w-8 h-8 mx-auto opacity-40" />
-                              <div className="text-sm font-medium opacity-70">Click to upload warehouse exit note</div>
-                              <div className="text-xs opacity-50">PDF, DOC, DOCX (max 10MB)</div>
-                            </div>
-                          )}
-                        </div>
-                        <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={(e) => setWarehouseExitFile(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
+                    {/* WH7 */}
+                    {renderFileUpload('WH7', wh7File, setWh7File)}
+                    
+                    {/* Assessment */}
+                    {renderFileUpload('Assessment', assessmentFile, setAssessmentFile)}
+                    
+                    {/* Draft */}
+                    {renderFileUpload('Draft', draftFile, setDraftFile)}
+                    
+                    {/* T1 */}
+                    {renderFileUpload('T1', t1File, setT1File)}
+                    
+                    {/* Exit Note */}
+                    {renderFileUpload('Exit Note', exitNoteFile, setExitNoteFile)}
                   </div>
                 </div>
                 <div className="flex gap-3 justify-end">
