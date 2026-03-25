@@ -132,11 +132,14 @@ export function ImportCargoPage() {
   };
 
   const uploadFileToStorage = async (file: File, path: string): Promise<string> => {
+    console.log(`[UPLOAD] Starting upload: ${file.name} -> ${path}`);
+    
     // Get signed upload URL
     const signedUrlRes = await fetchJson<{ signed_url: string }>(`/ops/storage/upload-url`, {
       method: 'POST',
       body: JSON.stringify({ path }),
     });
+    console.log(`[UPLOAD] Got signed URL for ${path}`);
     
     // Upload file to Supabase Storage using signed URL
     const uploadRes = await fetch(signedUrlRes.signed_url, {
@@ -148,9 +151,12 @@ export function ImportCargoPage() {
     });
     
     if (!uploadRes.ok) {
-      throw new Error(`Upload failed: ${await uploadRes.text()}`);
+      const errorText = await uploadRes.text();
+      console.error(`[UPLOAD] Failed to upload ${path}:`, errorText);
+      throw new Error(`Upload failed: ${errorText}`);
     }
     
+    console.log(`[UPLOAD] Successfully uploaded ${path}`);
     return path;
   };
 
@@ -177,17 +183,21 @@ export function ImportCargoPage() {
       });
       
       const cargoId = data.cargo_id;
+      console.log(`[REGISTER] Cargo registered: ${cargoId}`);
       
       // Upload required documents
+      console.log(`[REGISTER] Uploading ${Object.keys(uploadedFiles).length} required documents...`);
       for (const [docType, file] of Object.entries(uploadedFiles)) {
         const path = `cargo/${cargoId}/documents/${docType}/${file.name}`;
         await uploadFileToStorage(file, path);
         
         // Update document record with file path
+        console.log(`[REGISTER] Updating document record: ${docType}`);
         await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
           method: 'PATCH',
-          body: JSON.stringify({ file_path: path, status: 'UPLOADED' }),
+          body: JSON.stringify({ provider_path: path, status: 'UPLOADED' }),
         });
+        console.log(`[REGISTER] Document updated: ${docType}`);
       }
       
       // Upload customs clearance documents if needed (as documents, not approvals)
