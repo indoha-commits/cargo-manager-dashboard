@@ -190,24 +190,25 @@ export function ImportCargoPage() {
         });
       }
       
-      // Upload customs clearance documents if needed
+      // Upload customs clearance documents if needed (as documents, not approvals)
       if (needsAssessment) {
         const customsDocs = [
-          { file: wh7File, kind: 'WH7', notes: 'WH7 form uploaded' },
-          { file: assessmentFile, kind: 'ASSESSMENT', notes: 'Assessment uploaded' },
-          { file: draftFile, kind: 'DRAFT', notes: 'Draft uploaded' },
-          { file: t1File, kind: 'T1', notes: 'T1 form uploaded' },
-          { file: exitNoteFile, kind: 'EXIT_NOTE', notes: 'Exit note uploaded' },
+          { file: wh7File, docType: 'WH7' },
+          { file: assessmentFile, docType: 'ASSESSMENT' },
+          { file: draftFile, docType: 'DRAFT_DECLARATION' },
+          { file: t1File, docType: 'T1' },
+          { file: exitNoteFile, docType: 'EXIT_NOTE' },
         ];
         
         for (const doc of customsDocs) {
           if (doc.file) {
-            const path = `cargo/${cargoId}/approvals/${doc.kind.toLowerCase()}/${doc.file.name}`;
+            const path = `cargo/${cargoId}/documents/${doc.docType}/${doc.file.name}`;
             await uploadFileToStorage(doc.file, path);
             
-            await fetchJson(`/ops/cargo/${cargoId}/approvals`, {
-              method: 'POST',
-              body: JSON.stringify({ kind: doc.kind, file_path: path, notes: doc.notes }),
+            // Update or create document record
+            await fetchJson(`/ops/cargo/${cargoId}/documents/${doc.docType}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ provider_path: path, status: 'UPLOADED' }),
             });
           }
         }
