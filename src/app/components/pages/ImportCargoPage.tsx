@@ -191,11 +191,11 @@ export function ImportCargoPage() {
         const path = `cargo/${cargoId}/documents/${docType}/${file.name}`;
         await uploadFileToStorage(file, path);
         
-        // Update document record with file path
+        // Update document record with file path (keep VERIFIED for import)
         console.log(`[REGISTER] Updating document record: ${docType}`);
         await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
           method: 'PATCH',
-          body: JSON.stringify({ provider_path: path, status: 'UPLOADED' }),
+          body: JSON.stringify({ provider_path: path, status: 'VERIFIED' }),
         });
         console.log(`[REGISTER] Document updated: ${docType}`);
       }
