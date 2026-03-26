@@ -195,7 +195,7 @@ export function ImportCargoPage() {
         console.log(`[REGISTER] Updating document record: ${docType}`);
         await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
           method: 'PATCH',
-          body: JSON.stringify({ provider_path: path, status: 'VERIFIED' }),
+          body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
         });
         console.log(`[REGISTER] Document updated: ${docType}`);
       }
@@ -218,7 +218,7 @@ export function ImportCargoPage() {
             // Update or create document record
             await fetchJson(`/ops/cargo/${cargoId}/documents/${doc.docType}`, {
               method: 'PATCH',
-              body: JSON.stringify({ provider_path: path, status: 'VERIFIED' }),
+              body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
             });
           }
         }
