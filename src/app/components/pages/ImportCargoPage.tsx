@@ -440,7 +440,7 @@ export function ImportCargoPage() {
                   </p>
                 </div>
                 <div className="text-sm font-medium px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--gold-accent)', color: 'var(--navy-deep)' }}>
-                  {Object.keys(uploadedFiles).length} / {requiredDocs.length} files
+                  {Object.keys(uploadedFiles).length + Object.keys(notAvailableDocs).filter(k => notAvailableDocs[k]).length} / {requiredDocs.length} handled
                 </div>
               </div>
               
@@ -450,7 +450,7 @@ export function ImportCargoPage() {
                   <div 
                     className="h-full transition-all duration-300 rounded-full"
                     style={{ 
-                      width: `${(Object.keys(uploadedFiles).length / requiredDocs.length) * 100}%`,
+                      width: `${((Object.keys(uploadedFiles).length + Object.keys(notAvailableDocs).filter(k => notAvailableDocs[k]).length) / requiredDocs.length) * 100}%`,
                       backgroundColor: 'var(--gold-accent)'
                     }}
                   />
