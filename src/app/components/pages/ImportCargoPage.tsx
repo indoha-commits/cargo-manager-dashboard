@@ -32,6 +32,7 @@ export function ImportCargoPage() {
   
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [notAvailableDocs, setNotAvailableDocs] = useState<Record<string, boolean>>({});
   const [draggedOver, setDraggedOver] = useState<string | null>(null);
   
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -185,6 +186,15 @@ export function ImportCargoPage() {
       const cargoId = data.container_id; // Use container_id (user input) not UUID
       console.log(`[REGISTER] Cargo registered: ${cargoId} (UUID: ${data.cargo_id})`);
       
+      // Mark not-available documents
+      for (const docType of Object.keys(notAvailableDocs).filter(k => notAvailableDocs[k])) {
+        console.log(`[REGISTER] Marking document as NOT_AVAILABLE: ${docType}`);
+        await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ provider_path: '_not_available_', status: 'NOT_AVAILABLE', import_mode: false }),
+        });
+      }
+
       // Upload required documents
       console.log(`[REGISTER] Uploading ${Object.keys(uploadedFiles).length} required documents...`);
       for (const [docType, file] of Object.entries(uploadedFiles)) {
@@ -230,6 +240,7 @@ export function ImportCargoPage() {
       setShowUploadForm(false);
       setShowAssessmentForm(false);
       setUploadedFiles({});
+      setNotAvailableDocs({});
       setWh7File(null);
       setAssessmentFile(null);
       setDraftFile(null);
@@ -447,18 +458,65 @@ export function ImportCargoPage() {
               </div>
               
               <div className="space-y-4">
-                {requiredDocs.map((docType) => (
-                  <div key={docType} className="border rounded-lg p-5 transition-all hover:border-opacity-80" style={{ borderColor: uploadedFiles[docType] ? 'var(--gold-accent)' : 'var(--border)', backgroundColor: uploadedFiles[docType] ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
+                {requiredDocs.map((docType) => {
+                  const isNotAvailable = notAvailableDocs[docType] === true;
+                  const hasFile = !!uploadedFiles[docType];
+                  const borderColor = isNotAvailable
+                    ? 'rgb(239,68,68)'
+                    : hasFile
+                      ? 'var(--gold-accent)'
+                      : 'var(--border)';
+                  const bgColor = isNotAvailable
+                    ? 'rgba(239,68,68,0.05)'
+                    : hasFile
+                      ? 'rgba(212,175,55,0.05)'
+                      : 'transparent';
+
+                  return (
+                  <div key={docType} className="border rounded-lg p-5 transition-all hover:border-opacity-80" style={{ borderColor, backgroundColor: bgColor }}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <File className="w-4 h-4 opacity-60" />
                         <span className="text-sm font-medium">{docType}</span>
                       </div>
-                      {uploadedFiles[docType] && (
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isNotAvailable && (
+                          <span className="text-xs px-2 py-0.5 rounded-md font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(239,68,68)' }}>
+                            Not Available
+                          </span>
+                        )}
+                        {hasFile && !isNotAvailable && (
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        )}
+                        {/* Not Available toggle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isNotAvailable) {
+                              setNotAvailableDocs(prev => { const n = { ...prev }; delete n[docType]; return n; });
+                            } else {
+                              setNotAvailableDocs(prev => ({ ...prev, [docType]: true }));
+                              setUploadedFiles(prev => { const n = { ...prev }; delete n[docType]; return n; });
+                            }
+                          }}
+                          className="text-xs px-2 py-1 rounded-md border transition-colors"
+                          style={{
+                            borderColor: isNotAvailable ? 'rgb(239,68,68)' : 'var(--border)',
+                            color: isNotAvailable ? 'rgb(239,68,68)' : 'inherit',
+                            opacity: 0.8,
+                          }}
+                          title="Mark this document as not available"
+                        >
+                          {isNotAvailable ? 'Undo' : 'Not Available'}
+                        </button>
+                      </div>
                     </div>
-                    
+
+                    {isNotAvailable ? (
+                      <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ borderColor: 'rgb(239,68,68)', backgroundColor: 'rgba(239,68,68,0.04)' }}>
+                        <div className="text-sm opacity-70">This document is marked as not available and will be visible to the client.</div>
+                      </div>
+                    ) : (
                     <label 
                       className="block cursor-pointer"
                       onDragOver={(e) => {
@@ -531,8 +589,10 @@ export function ImportCargoPage() {
                         }}
                       />
                     </label>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
