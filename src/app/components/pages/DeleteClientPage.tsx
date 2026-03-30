@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { deleteOpsClient } from '@/app/api/ops';
-import { fetchJson } from '@/app/api/client';
+import { fetchJson } from '@/app/api/ops';
 
 interface Client {
   id: string;
