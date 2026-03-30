@@ -95,6 +95,13 @@ export function OperationsUpdatePage() {
     return matchesFilter && matchesSearch;
   });
 
+  const manualActionOptions = [
+    { value: 'PHYSICAL_VERIFICATION', label: 'Physical Verification' },
+    { value: 'WAREHOUSE_ARRIVAL', label: 'Warehouse Arrival' },
+    { value: 'DEPARTED_PORT', label: 'Departed Port' },
+    { value: 'IN_ROUTE_RUSUMO', label: 'In Route to Rusumo' },
+  ];
+
   const isActionCompleted = (cargoId: string, actionType: string) => {
     return completedActions.includes(`${cargoId}-${actionType}`);
   };
