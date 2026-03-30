@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
-import { deleteOpsClient } from '@/app/api/ops';
-import { fetchJson } from '@/app/api/ops';
+import { deleteOpsClient, getOpsClients } from '@/app/api/ops';
 
 interface Client {
   id: string;
@@ -24,9 +23,9 @@ export function DeleteClientPage({ onDeleted, onCancel }: DeleteClientPageProps)
 
   // Load client list
   useEffect(() => {
-    fetchJson<{ clients: Client[] }>('/ops/clients')
-      .then((res) => setClients(res.clients ?? []))
-      .catch((e) => setError(String(e)))
+    getOpsClients()
+      .then((res) => setClients((res.clients ?? []) as any))
+      .catch((e: any) => setError(String(e)))
       .finally(() => setLoadingClients(false));
   }, []);
 

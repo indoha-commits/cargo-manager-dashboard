@@ -288,9 +288,16 @@ export type OpsCreateClientResponse = {
   user: { id: string; email: string };
 };
 
-export async function deleteOpsClient(tenantId: string): Promise<{ ok: true }> {
-  return await fetchJson<{ ok: true }>(`/admin/clients/${encodeURIComponent(tenantId)}`, {
+export async function deleteOpsClient(clientId: string): Promise<{ ok: true }> {
+  return await fetchJson<{ ok: true }>(`/ops/clients/${encodeURIComponent(clientId)}`, {
     method: 'DELETE',
+  });
+}
+
+export async function addOpsClientUser(clientId: string, email: string, password: string): Promise<{ ok: true; userId: string; email: string }> {
+  return await fetchJson<{ ok: true; userId: string; email: string }>(`/ops/clients/${encodeURIComponent(clientId)}/users`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
   });
 }
 

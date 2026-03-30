@@ -15,6 +15,7 @@ import { CargoTimelinePage } from '@/app/components/pages/CargoTimelinePage';
 import { CargoRegistryPage } from '@/app/components/pages/CargoRegistryPage';
 import { CreateClientPage } from '@/app/components/pages/CreateClientPage';
 import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
+import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { fetchJson } from '@/app/api/client';
@@ -30,6 +31,7 @@ type OpsPageId =
   | 'cargo-registry'
   | 'create-client'
   | 'delete-client'
+  | 'add-client-user'
   | 'activity-log';
 
 const pageToPath: Record<OpsPageId, string> = {
@@ -43,6 +45,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'cargo-registry': 'cargo-registry',
   'create-client': 'create-client',
   'delete-client': 'delete-client',
+  'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
 };
 
@@ -57,6 +60,7 @@ const pathToPage: Record<string, OpsPageId> = {
   'cargo-registry': 'cargo-registry',
   'create-client': 'create-client',
   'delete-client': 'delete-client',
+  'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
 };
 
@@ -120,6 +124,7 @@ function OpsPageRenderer({
           onViewTimeline={handleViewTimeline}
           onCreateClient={() => setCurrentPage('create-client')}
           onDeleteClient={() => setCurrentPage('delete-client')}
+          onAddClientUser={() => setCurrentPage('add-client-user')}
           autoOpenNewCargoWithClient={newlyCreatedClient}
           onAutoOpenConsumed={() => setNewlyCreatedClient(null)}
         />
@@ -139,6 +144,13 @@ function OpsPageRenderer({
         <DeleteClientPage
           onCancel={() => setCurrentPage('cargo-registry')}
           onDeleted={() => setCurrentPage('cargo-registry')}
+        />
+      );
+    case 'add-client-user':
+      return (
+        <AddClientUserPage
+          onCancel={() => setCurrentPage('cargo-registry')}
+          onDone={() => setCurrentPage('cargo-registry')}
         />
       );
     case 'activity-log':

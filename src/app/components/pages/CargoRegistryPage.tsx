@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Search, Trash2, X } from 'lucide-react';
+import { ExternalLink, Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createOpsCargo,
@@ -15,6 +15,7 @@ interface CargoRegistryPageProps {
   onViewTimeline: (cargoId: string) => void;
   onCreateClient: () => void;
   onDeleteClient: () => void;
+  onAddClientUser: () => void;
   autoOpenNewCargoWithClient?: { id: string; name: string } | null;
   onAutoOpenConsumed?: () => void;
 }
@@ -53,6 +54,7 @@ export function CargoRegistryPage({
   onViewTimeline,
   onCreateClient,
   onDeleteClient,
+  onAddClientUser,
   autoOpenNewCargoWithClient,
   onAutoOpenConsumed,
 }: CargoRegistryPageProps) {
@@ -447,6 +449,14 @@ export function CargoRegistryPage({
           >
             <Plus className="w-4 h-4" />
             Bulk Create
+          </button>
+          <button
+            onClick={onAddClientUser}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
+            style={{ borderColor: 'var(--gold-accent)', color: 'var(--gold-accent)' }}
+          >
+            <UserPlus className="w-4 h-4" />
+            Add User
           </button>
           <button
             onClick={onDeleteClient}
