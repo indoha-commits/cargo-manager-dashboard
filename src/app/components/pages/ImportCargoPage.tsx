@@ -15,6 +15,8 @@ function requiredDocsForCategory(category: Category | ''): string[] {
 }
 
 export function ImportCargoPage() {
+  const [isGroupImport, setIsGroupImport] = useState(false);
+  const [containerCount, setContainerCount] = useState(2);
   const [category, setCategory] = useState<Category | ''>('');
 
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
@@ -169,69 +171,93 @@ export function ImportCargoPage() {
 
     if (!category) return setError('Select a category');
     if (!selectedClientId) return setError('Select a client');
-    if (!selectedCargoId.trim()) return setError('Enter a cargo ID');
+    if (!selectedCargoId.trim()) return setError('Enter a Bill of Lading / Cargo ID');
+    if (isGroupImport && (containerCount < 2 || containerCount > 50)) return setError('Container count must be between 2 and 50');
 
     setSubmitting(true);
     try {
-      // Register cargo first (pass not-available docs so they're inserted correctly)
-      const data = await fetchJson<{ cargo_id: string; container_id: string }>(`/ops/cargo/register`, {
-        method: 'POST',
-        body: JSON.stringify({
-          client_id: selectedClientId,
-          cargo_id: selectedCargoId,
-          category,
-          milestone_completed_at: milestoneCompletedAt ? new Date(milestoneCompletedAt).toISOString() : null,
-          starting_milestone: startingMilestone,
-          not_available_docs: Object.keys(notAvailableDocs).filter(k => notAvailableDocs[k]),
-          not_available_customs_docs: Object.keys(notAvailableCustomsDocs).filter(k => notAvailableCustomsDocs[k]),
-        }),
-      });
-      
-      const cargoId = data.container_id; // Use container_id (user input) not UUID
-      console.log(`[REGISTER] Cargo registered: ${cargoId} (UUID: ${data.cargo_id})`);
+      const notAvailableDocsList = Object.keys(notAvailableDocs).filter(k => notAvailableDocs[k]);
+      const notAvailableCustomsList = Object.keys(notAvailableCustomsDocs).filter(k => notAvailableCustomsDocs[k]);
+      const completedAtIso = milestoneCompletedAt ? new Date(milestoneCompletedAt).toISOString() : null;
 
-      // Upload required documents
-      console.log(`[REGISTER] Uploading ${Object.keys(uploadedFiles).length} required documents...`);
-      for (const [docType, file] of Object.entries(uploadedFiles)) {
-        const path = `cargo/${cargoId}/documents/${docType}/${file.name}`;
-        await uploadFileToStorage(file, path);
-        
-        // Update document record with file path (keep VERIFIED for import)
-        console.log(`[REGISTER] Updating document record: ${docType}`);
-        await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
+      // ── Determine container IDs to upload docs to ───────────────────
+      let containerIds: string[] = [];
+
+      if (isGroupImport) {
+        // Group import: register multiple containers under one BoL
+        const bulkData = await fetchJson<{ containers: Array<{ cargo_id: string; container_id: string }> }>(`/ops/cargo/bulk-import`, {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: selectedClientId,
+            bill_of_lading: selectedCargoId.trim(),
+            container_count: containerCount,
+            category,
+            starting_milestone: startingMilestone,
+            milestone_completed_at: completedAtIso,
+            not_available_docs: notAvailableDocsList,
+            not_available_customs_docs: notAvailableCustomsList,
+          }),
         });
-        console.log(`[REGISTER] Document updated: ${docType}`);
+        containerIds = bulkData.containers.map((c) => c.container_id);
+        console.log(`[GROUP IMPORT] Registered ${containerIds.length} containers: ${containerIds.join(', ')}`);
+      } else {
+        // Single container import
+        const data = await fetchJson<{ cargo_id: string; container_id: string }>(`/ops/cargo/register`, {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: selectedClientId,
+            cargo_id: selectedCargoId.trim(),
+            category,
+            milestone_completed_at: completedAtIso,
+            starting_milestone: startingMilestone,
+            not_available_docs: notAvailableDocsList,
+            not_available_customs_docs: notAvailableCustomsList,
+          }),
+        });
+        containerIds = [data.container_id];
+        console.log(`[REGISTER] Cargo registered: ${data.container_id} (UUID: ${data.cargo_id})`);
       }
-      
-      // Upload customs clearance documents if needed (as documents, not approvals)
-      if (needsAssessment) {
-        const customsDocs = [
-          { file: wh7File, docType: 'WH7' },
-          { file: assessmentFile, docType: 'ASSESSMENT' },
-          { file: draftFile, docType: 'DRAFT_DECLARATION' },
-          { file: t1File, docType: 'T1' },
-          { file: exitNoteFile, docType: 'EXIT_NOTE' },
-          { file: im4File, docType: 'IM4' },
-        ];
 
-        for (const doc of customsDocs) {
-          if (doc.file && !notAvailableCustomsDocs[doc.docType]) {
-            const path = `cargo/${cargoId}/documents/${doc.docType}/${doc.file.name}`;
-            await uploadFileToStorage(doc.file, path);
-            
-            // Update or create document record
-            await fetchJson(`/ops/cargo/${cargoId}/documents/${doc.docType}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
-            });
+      // ── Upload documents for each container ─────────────────────────
+      for (const cargoId of containerIds) {
+        // Required docs
+        for (const [docType, file] of Object.entries(uploadedFiles)) {
+          const path = `cargo/${cargoId}/documents/${docType}/${file.name}`;
+          await uploadFileToStorage(file, path);
+          await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
+          });
+        }
+
+        // Customs docs
+        if (needsAssessment) {
+          const customsDocs = [
+            { file: wh7File, docType: 'WH7' },
+            { file: assessmentFile, docType: 'ASSESSMENT' },
+            { file: draftFile, docType: 'DRAFT_DECLARATION' },
+            { file: t1File, docType: 'T1' },
+            { file: exitNoteFile, docType: 'EXIT_NOTE' },
+            { file: im4File, docType: 'IM4' },
+          ];
+          for (const doc of customsDocs) {
+            if (doc.file && !notAvailableCustomsDocs[doc.docType]) {
+              const path = `cargo/${cargoId}/documents/${doc.docType}/${doc.file.name}`;
+              await uploadFileToStorage(doc.file, path);
+              await fetchJson(`/ops/cargo/${cargoId}/documents/${doc.docType}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
+              });
+            }
           }
         }
       }
-      
-      setSuccess(`Cargo ${selectedCargoId} registered successfully${needsAssessment ? ' with customs clearance documents' : ''}`);
-      
+
+      const label = isGroupImport
+        ? `${containerCount} containers registered under BoL ${selectedCargoId.trim()}: ${containerIds.join(', ')}`
+        : `Cargo ${selectedCargoId.trim()} registered successfully`;
+      setSuccess(label + (needsAssessment ? ' with customs clearance documents' : ''));
+
       // Reset form
       setShowUploadForm(false);
       setShowAssessmentForm(false);
@@ -246,6 +272,7 @@ export function ImportCargoPage() {
       setExitNoteFile(null);
       setSelectedCargoId('');
       setMilestoneCompletedAt('');
+      setContainerCount(2);
     } catch (e) {
       const errorMsg = String(e);
       
@@ -303,7 +330,6 @@ export function ImportCargoPage() {
                   setCategory(e.target.value as any);
                   setSelectedClientId('');
                   setSelectedCargoId('');
-                  setCargos([]);
                 }}
                 className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none"
                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
@@ -343,20 +369,71 @@ export function ImportCargoPage() {
             )}
           </div>
 
+          {/* Import mode toggle */}
+          <div className="flex items-center rounded-md border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => setIsGroupImport(false)}
+              className="flex-1 py-2 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: !isGroupImport ? 'var(--gold-accent)' : 'transparent',
+                color: !isGroupImport ? 'var(--navy-deep)' : 'inherit',
+              }}
+            >
+              Single Container
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsGroupImport(true)}
+              className="flex-1 py-2 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: isGroupImport ? 'var(--gold-accent)' : 'transparent',
+                color: isGroupImport ? 'var(--navy-deep)' : 'inherit',
+              }}
+            >
+              Group Import
+            </button>
+          </div>
+
+          {/* Cargo ID / Bill of Lading */}
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
-              Cargo ID
+              {isGroupImport ? 'Bill of Lading (shared across all containers)' : 'Cargo ID'}
             </label>
             <input
               type="text"
               value={selectedCargoId}
               onChange={(e) => setSelectedCargoId(e.target.value)}
               disabled={!selectedClientId}
-              placeholder={cargoIdPlaceholder}
+              placeholder={isGroupImport ? 'BL55207305' : cargoIdPlaceholder}
               className="w-full px-4 py-2.5 rounded-md border text-sm disabled:opacity-60"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
             />
+            {isGroupImport && selectedCargoId && (
+              <div className="text-xs opacity-50 mt-1">
+                Containers will be: {selectedCargoId}-001, {selectedCargoId}-002, …
+              </div>
+            )}
           </div>
+
+          {/* Container count (group import only) */}
+          {isGroupImport && (
+            <div>
+              <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
+                Number of Containers
+              </label>
+              <input
+                type="number"
+                min={2}
+                max={50}
+                value={containerCount}
+                onChange={(e) => setContainerCount(Math.max(2, Math.min(50, parseInt(e.target.value) || 2)))}
+                className="w-full px-4 py-2.5 rounded-md border text-sm"
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+              />
+              <div className="text-xs opacity-50 mt-1">Documents will be uploaded to all {containerCount} containers.</div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
