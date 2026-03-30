@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Search, X } from 'lucide-react';
+import { ExternalLink, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createOpsCargo,
@@ -14,6 +14,7 @@ import { formatLabel, requiredDocsForCategory, type CargoCategory } from '@/app/
 interface CargoRegistryPageProps {
   onViewTimeline: (cargoId: string) => void;
   onCreateClient: () => void;
+  onDeleteClient: () => void;
   autoOpenNewCargoWithClient?: { id: string; name: string } | null;
   onAutoOpenConsumed?: () => void;
 }
@@ -51,6 +52,7 @@ function formatEvent(value: string | null): string {
 export function CargoRegistryPage({
   onViewTimeline,
   onCreateClient,
+  onDeleteClient,
   autoOpenNewCargoWithClient,
   onAutoOpenConsumed,
 }: CargoRegistryPageProps) {
@@ -445,6 +447,14 @@ export function CargoRegistryPage({
           >
             <Plus className="w-4 h-4" />
             Bulk Create
+          </button>
+          <button
+            onClick={onDeleteClient}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
+            style={{ borderColor: 'rgb(239,68,68)', color: 'rgb(239,68,68)' }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Client
           </button>
         </div>
       </div>

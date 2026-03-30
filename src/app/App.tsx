@@ -119,6 +119,7 @@ function OpsPageRenderer({
         <CargoRegistryPage
           onViewTimeline={handleViewTimeline}
           onCreateClient={() => setCurrentPage('create-client')}
+          onDeleteClient={() => setCurrentPage('delete-client')}
           autoOpenNewCargoWithClient={newlyCreatedClient}
           onAutoOpenConsumed={() => setNewlyCreatedClient(null)}
         />
