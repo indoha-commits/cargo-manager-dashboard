@@ -42,6 +42,7 @@ export function ImportCargoPage() {
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const [t1File, setT1File] = useState<File | null>(null);
   const [exitNoteFile, setExitNoteFile] = useState<File | null>(null);
+  const [im4File, setIm4File] = useState<File | null>(null);
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
   const cargoIdPlaceholder = category ? `Enter cargo ID (${category})` : 'Enter cargo ID';
@@ -212,6 +213,7 @@ export function ImportCargoPage() {
           { file: draftFile, docType: 'DRAFT_DECLARATION' },
           { file: t1File, docType: 'T1' },
           { file: exitNoteFile, docType: 'EXIT_NOTE' },
+          { file: im4File, docType: 'IM4' },
         ];
 
         for (const doc of customsDocs) {
@@ -236,6 +238,7 @@ export function ImportCargoPage() {
       setUploadedFiles({});
       setNotAvailableDocs({});
       setNotAvailableCustomsDocs({});
+      setIm4File(null);
       setWh7File(null);
       setAssessmentFile(null);
       setDraftFile(null);
@@ -640,7 +643,8 @@ export function ImportCargoPage() {
                         draftFile || notAvailableCustomsDocs['DRAFT_DECLARATION'],
                         t1File || notAvailableCustomsDocs['T1'],
                         exitNoteFile || notAvailableCustomsDocs['EXIT_NOTE'],
-                      ].filter(Boolean).length} / 5 handled
+                        im4File || notAvailableCustomsDocs['IM4'],
+                      ].filter(Boolean).length} / 6 handled
                     </div>
                   </div>
 
@@ -651,6 +655,7 @@ export function ImportCargoPage() {
                       { label: 'Draft Declaration', docType: 'DRAFT_DECLARATION', file: draftFile, setFile: setDraftFile },
                       { label: 'T1', docType: 'T1', file: t1File, setFile: setT1File },
                       { label: 'Exit Note', docType: 'EXIT_NOTE', file: exitNoteFile, setFile: setExitNoteFile },
+                      { label: 'IM4 Document', docType: 'IM4', file: im4File, setFile: setIm4File },
                     ] as { label: string; docType: string; file: File | null; setFile: (f: File | null) => void }[]).map(({ label, docType, file, setFile }) => {
                       const isNotAvailable = notAvailableCustomsDocs[docType] === true;
                       const borderColor = isNotAvailable ? 'rgb(239,68,68)' : file ? 'var(--gold-accent)' : 'var(--border)';
