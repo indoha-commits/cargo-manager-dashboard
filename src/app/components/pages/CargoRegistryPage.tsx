@@ -432,7 +432,8 @@ export function CargoRegistryPage({
   const formatTimestamp = (value?: string | null) => (value ? new Date(value).toLocaleString() : '—');
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
         <div>
           <h1>Cargo Registry</h1>
@@ -623,8 +624,8 @@ export function CargoRegistryPage({
 
       {/* Delete Cargo Confirmation (destructive) */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-2xl" style={{ borderColor: 'var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
+          <div className="bg-card rounded-lg border w-full max-w-2xl my-auto" style={{ borderColor: 'var(--border)' }}>
             <div className="px-6 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
               <div>
                 <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--destructive)' }}>
@@ -701,8 +702,8 @@ export function CargoRegistryPage({
       )}
 
       {deleteGroupTarget && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-2xl" style={{ borderColor: 'var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
+          <div className="bg-card rounded-lg border w-full max-w-2xl my-auto" style={{ borderColor: 'var(--border)' }}>
             <div className="px-6 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
               <div>
                 <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--destructive)' }}>
@@ -775,12 +776,12 @@ export function CargoRegistryPage({
       {/* New Cargo Modal */}
       {showNewCargo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
           style={{ backgroundColor: 'rgba(11, 28, 45, 0.8)' }}
           onClick={() => setShowNewCargo(false)}
         >
           <div
-            className="bg-card rounded-lg border w-full max-w-xl"
+            className="bg-card rounded-lg border w-full max-w-xl my-auto max-h-[90vh] overflow-y-auto"
             style={{ borderColor: 'var(--border)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -963,12 +964,12 @@ export function CargoRegistryPage({
 
       {showBulkCargo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
           style={{ backgroundColor: 'rgba(11, 28, 45, 0.8)' }}
           onClick={() => setShowBulkCargo(false)}
         >
           <div
-            className="bg-card rounded-lg border w-full max-w-xl"
+            className="bg-card rounded-lg border w-full max-w-xl my-auto max-h-[90vh] overflow-y-auto"
             style={{ borderColor: 'var(--border)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1151,6 +1152,7 @@ export function CargoRegistryPage({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
