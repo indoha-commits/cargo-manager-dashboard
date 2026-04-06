@@ -6,18 +6,23 @@ import { fetchJson } from '@/app/api/client';
 
 type Category = 'MEDS_BEVERAGE' | 'RAW_MATERIALS' | 'ELECTRONICS';
 
-function requiredDocsForCategory(category: Category | ''): string[] {
+function requiredDocsForCategory(category: Category | '', milestone: string = ''): string[] {
   if (!category) return [];
-  const base = ['BILL_OF_LADING', 'COMMERCIAL_INVOICE', 'PACKING_LIST'];
-  if (category === 'MEDS_BEVERAGE') return [...base, 'IMPORT_LICENSE'];
-  if (category === 'RAW_MATERIALS') return [...base];
-  return [...base, 'TYPE_APPROVAL'];
+  const base = ['BILL_OF_LADING', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'T1_FORM'];
+  // T1 document must be ready before port departure
+  const withT1 = [...base, 'T1'];
+  if (category === 'MEDS_BEVERAGE') {
+    return [...withT1.slice(0, -1), 'IMPORT_LICENSE', 'T1'];
+  }
+  if (category === 'RAW_MATERIALS') return withT1;
+  return [...withT1.slice(0, -1), 'TYPE_APPROVAL', 'T1'];
 }
 
 export function ImportCargoPage() {
   const [isGroupImport, setIsGroupImport] = useState(false);
   const [containerCount, setContainerCount] = useState(2);
   const [category, setCategory] = useState<Category | ''>('');
+  const [clearancePathway, setClearancePathway] = useState<'PORT_CLEARANCE' | 'T1_TRANSIT'>('PORT_CLEARANCE');
 
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingClients, setLoadingClients] = useState(true);
@@ -68,8 +73,10 @@ export function ImportCargoPage() {
     }
   }, [startingMilestone]);
   
+  const POST_DEPARTURE_MILESTONES = ['DEPARTED_PORT', 'IN_ROUTE_RUSUMO', 'PHYSICAL_VERIFICATION', 'WAREHOUSE_ARRIVAL'];
+
   const needsAssessment = useMemo(() => {
-    return ['DEPARTED_PORT', 'IN_ROUTE_RUSUMO', 'PHYSICAL_VERIFICATION', 'WAREHOUSE_ARRIVAL'].includes(startingMilestone);
+    return POST_DEPARTURE_MILESTONES.includes(startingMilestone);
   }, [startingMilestone]);
   
   const renderFileUpload = (label: string, file: File | null, setFile: (file: File | null) => void) => (
@@ -192,6 +199,7 @@ export function ImportCargoPage() {
             bill_of_lading: selectedCargoId.trim(),
             container_count: containerCount,
             category,
+            clearance_pathway: clearancePathway,
             starting_milestone: startingMilestone,
             milestone_completed_at: completedAtIso,
             not_available_docs: notAvailableDocsList,
@@ -208,6 +216,7 @@ export function ImportCargoPage() {
             client_id: selectedClientId,
             cargo_id: selectedCargoId.trim(),
             category,
+            clearance_pathway: clearancePathway,
             milestone_completed_at: completedAtIso,
             starting_milestone: startingMilestone,
             not_available_docs: notAvailableDocsList,
@@ -236,7 +245,6 @@ export function ImportCargoPage() {
             { file: wh7File, docType: 'WH7' },
             { file: assessmentFile, docType: 'ASSESSMENT' },
             { file: draftFile, docType: 'DRAFT_DECLARATION' },
-            { file: t1File, docType: 'T1' },
             { file: exitNoteFile, docType: 'EXIT_NOTE' },
             { file: im4File, docType: 'IM4' },
           ];
@@ -344,6 +352,29 @@ export function ImportCargoPage() {
           </div>
 
           <div>
+            <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
+              Clearance Pathway
+            </label>
+            <div className="relative">
+              <select
+                value={clearancePathway}
+                onChange={(e) => setClearancePathway(e.target.value as any)}
+                className="w-full px-4 py-2.5 rounded-md border text-sm appearance-none"
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+              >
+                <option value="PORT_CLEARANCE">Port Clearance (Pay Tax at Port)</option>
+                <option value="T1_TRANSIT">T1 Transit (Pay Tax After Transport)</option>
+              </select>
+              <ChevronDown className="w-4 h-4 opacity-50 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+            <p className="text-xs opacity-60 mt-1">
+              {clearancePathway === 'PORT_CLEARANCE' 
+                ? 'Requires: Draft, Assessment, Exit Note' 
+                : 'Requires: T1 Form, IM8 Form, Exit Note'}
+            </p>
+          </div>
+
+          <div className="col-span-2">
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
               Client
             </label>
@@ -711,17 +742,16 @@ export function ImportCargoPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold">Customs Clearance Documents</h3>
-                      <p className="text-sm opacity-60 mt-1">Upload WH7, Assessment, Draft, T1, and Exit Note documents. Mark as Not Available if a document doesn't exist.</p>
+                      <p className="text-sm opacity-60 mt-1">Documents required after port departure: WH7, Assessment, Draft Declaration, Exit Note, IM4. Mark as Not Available if a document doesn't exist.</p>
                     </div>
                     <div className="text-sm font-medium px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--gold-accent)', color: 'var(--navy-deep)' }}>
                       {[
                         wh7File || notAvailableCustomsDocs['WH7'],
                         assessmentFile || notAvailableCustomsDocs['ASSESSMENT'],
                         draftFile || notAvailableCustomsDocs['DRAFT_DECLARATION'],
-                        t1File || notAvailableCustomsDocs['T1'],
                         exitNoteFile || notAvailableCustomsDocs['EXIT_NOTE'],
                         im4File || notAvailableCustomsDocs['IM4'],
-                      ].filter(Boolean).length} / 6 handled
+                      ].filter(Boolean).length} / 5 handled
                     </div>
                   </div>
 
@@ -730,7 +760,6 @@ export function ImportCargoPage() {
                       { label: 'WH7', docType: 'WH7', file: wh7File, setFile: setWh7File },
                       { label: 'Assessment', docType: 'ASSESSMENT', file: assessmentFile, setFile: setAssessmentFile },
                       { label: 'Draft Declaration', docType: 'DRAFT_DECLARATION', file: draftFile, setFile: setDraftFile },
-                      { label: 'T1', docType: 'T1', file: t1File, setFile: setT1File },
                       { label: 'Exit Note', docType: 'EXIT_NOTE', file: exitNoteFile, setFile: setExitNoteFile },
                       { label: 'IM4 Document', docType: 'IM4', file: im4File, setFile: setIm4File },
                     ] as { label: string; docType: string; file: File | null; setFile: (f: File | null) => void }[]).map(({ label, docType, file, setFile }) => {
