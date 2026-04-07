@@ -314,6 +314,7 @@ export type OpsCreateCargoRequest = {
   container_number: string;
   expected_arrival_date: string;
   category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
+  clearance_pathway?: 'PORT_CLEARANCE' | 'T1_TRANSIT';
   required_documents: string[];
   container_count?: number;
   destination?: string | null;
@@ -326,6 +327,7 @@ export type OpsBulkCreateCargoRequest = {
   bill_of_lading: string;
   expected_arrival_date: string;
   category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
+  clearance_pathway?: 'PORT_CLEARANCE' | 'T1_TRANSIT';
   required_documents: string[];
   container_count: number;
   destination?: string | null;

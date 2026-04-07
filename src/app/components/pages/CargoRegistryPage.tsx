@@ -344,7 +344,7 @@ export function CargoRegistryPage({
       return;
     }
 
-    const required_documents = requiredDocsForCategory(form.category);
+    const required_documents = requiredDocsForCategory(form.category, form.clearance_pathway);
 
     setSubmitting(true);
     try {
@@ -354,6 +354,7 @@ export function CargoRegistryPage({
         container_number: form.container_id.trim(),
         expected_arrival_date: form.expected_arrival_date,
         category: form.category,
+        clearance_pathway: form.clearance_pathway,
         required_documents,
         container_count: form.container_count,
         destination: form.destination.trim() || null,
@@ -394,7 +395,7 @@ export function CargoRegistryPage({
       return;
     }
 
-    const required_documents = requiredDocsForCategory(bulkForm.category);
+    const required_documents = requiredDocsForCategory(bulkForm.category, bulkForm.clearance_pathway);
 
     setSubmitting(true);
     try {
@@ -403,6 +404,7 @@ export function CargoRegistryPage({
         bill_of_lading: bulkForm.bill_of_lading.trim(),
         expected_arrival_date: bulkForm.expected_arrival_date,
         category: bulkForm.category,
+        clearance_pathway: bulkForm.clearance_pathway,
         required_documents,
         container_count: bulkForm.container_count,
         destination: bulkForm.destination.trim() || null,
