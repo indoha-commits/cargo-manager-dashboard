@@ -85,6 +85,7 @@ export function ValidationPage() {
   const draftInputRef = useRef<HTMLInputElement | null>(null);
   const wh7InputRef = useRef<HTMLInputElement | null>(null);
   const exitNoteInputRef = useRef<HTMLInputElement | null>(null);
+  const im8InputRef = useRef<HTMLInputElement | null>(null);
   const pendingPickRef = useRef<{ cargoId: string; kind: ApprovalKind } | null>(null);
 
   const refresh = async () => {
@@ -193,7 +194,7 @@ export function ValidationPage() {
       }));
   }, [items]);
 
-  type ApprovalKind = 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE';
+  type ApprovalKind = 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
 
   const handleUpload = async (
     cargoId: string,
@@ -239,7 +240,8 @@ export function ValidationPage() {
     if (kind === 'ASSESSMENT') assessmentInputRef.current?.click();
     else if (kind === 'DECLARATION_DRAFT') draftInputRef.current?.click();
     else if (kind === 'WH7_DOC') wh7InputRef.current?.click();
-    else exitNoteInputRef.current?.click();
+    else if (kind === 'EXIT_NOTE') exitNoteInputRef.current?.click();
+    else im8InputRef.current?.click();
   };
 
   const formatApprovalStatus = (status?: string | null) => {
@@ -283,6 +285,12 @@ export function ValidationPage() {
       />
       <input
         ref={exitNoteInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => void onFilePicked(e.target.files?.[0] ?? null)}
+      />
+      <input
+        ref={im8InputRef}
         type="file"
         className="hidden"
         onChange={(e) => void onFilePicked(e.target.files?.[0] ?? null)}
@@ -361,13 +369,15 @@ export function ValidationPage() {
                         const draftKey = `${it.cargo_id}:DECLARATION_DRAFT`;
                         const wh7Key = `${it.cargo_id}:WH7_DOC`;
                         const exitNoteKey = `${it.cargo_id}:EXIT_NOTE`;
+                        const im8Key = `${it.cargo_id}:IM8`;
 
                         const badge = getStatusBadge(it.validation_status);
                         const Icon = badge.icon;
 
                         const cargoExpanded = expandedCargo[it.cargo_id] ?? false;
 
-                        const canUpload = it.validation_status === 'pending_upload' || it.validation_status === 'pending_validation' || it.validation_status === 'failed';
+                        const canUploadRequired = it.validation_status === 'pending_upload' || it.validation_status === 'pending_validation' || it.validation_status === 'failed';
+                        const canUploadOptional = canUploadRequired || it.validation_status === 'validated';
                         const canSend =
                           Boolean(it.assessment) &&
                           Boolean(it.draft) &&
@@ -510,7 +520,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'ASSESSMENT')}
-                                            disabled={!canUpload || Boolean(busy[assessmentKey]) || (it.assessment && it.assessment.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[assessmentKey]) || (it.assessment && it.assessment.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -583,7 +593,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'DECLARATION_DRAFT')}
-                                            disabled={!canUpload || Boolean(busy[draftKey]) || (it.draft && it.draft.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[draftKey]) || (it.draft && it.draft.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -656,7 +666,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
-                                            disabled={!canUpload || Boolean(busy[wh7Key]) || (it.wh7 && it.wh7.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[wh7Key]) || (it.wh7 && it.wh7.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -729,7 +739,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
-                                            disabled={!canUpload || Boolean(busy[exitNoteKey]) || (it.exit_note && it.exit_note.status !== 'REJECTED')}
+                                            disabled={!canUploadOptional || Boolean(busy[exitNoteKey]) || (it.exit_note && it.exit_note.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -763,6 +773,79 @@ export function ValidationPage() {
                                               </div>
                                               <div style={{ color: 'rgb(185, 28, 28)' }}>
                                                 {it.exit_note.rejection_reason}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="text-sm" style={{ fontWeight: 600 }}>
+                                              IM8
+                                            </div>
+                                            <div className="text-xs opacity-60 mt-1">
+                                              Status: {formatApprovalStatus(it.im8?.status)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
+                                          {it.im8 && (it.im8.file_path || it.im8.file_url) && (
+                                            <button
+                                              type="button"
+                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
+                                              style={{ borderColor: 'var(--border)' }}
+                                              onClick={async () => {
+                                                try {
+                                                  const { url } = await getOpsApprovalSignedUrl(it.im8!.id);
+                                                  window.open(url, '_blank', 'noreferrer');
+                                                } catch (e) {
+                                                  alert(String(e));
+                                                }
+                                              }}
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                              View
+                                            </button>
+                                          )}
+
+                                          <button
+                                            type="button"
+                                            onClick={() => pickFile(it.cargo_id, 'IM8')}
+                                            disabled={!canUploadOptional || Boolean(busy[im8Key]) || (it.im8 && it.im8.status !== 'REJECTED')}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
+                                            style={{ borderColor: 'var(--border)' }}
+                                          >
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">
+                                              {busy[im8Key]
+                                                ? it.im8?.status === 'REJECTED'
+                                                  ? 'Re-uploading IM8…'
+                                                  : 'Uploading IM8…'
+                                                : it.im8
+                                                  ? it.im8.status === 'REJECTED'
+                                                    ? 'Re-upload IM8'
+                                                    : 'Uploaded'
+                                                  : 'Upload IM8'}
+                                            </span>
+                                          </button>
+                                        </div>
+                                        </div>
+                                        {it.im8?.status === 'REJECTED' && it.im8?.rejection_reason && (
+                                          <div 
+                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
+                                            style={{ 
+                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                              borderLeft: '3px solid rgb(239, 68, 68)' 
+                                            }}
+                                          >
+                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div className="flex-1">
+                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
+                                                Rejection Reason
+                                              </div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
+                                                {it.im8.rejection_reason}
                                               </div>
                                             </div>
                                           </div>

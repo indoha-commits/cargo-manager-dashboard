@@ -224,6 +224,17 @@ export type OpsValidationQueueItem = {
     decided_at: string | null;
     rejection_reason: string | null;
   } | null;
+  im8: {
+    id: string;
+    cargo_id: string;
+    kind: 'IM8';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    file_url: string | null;
+    file_path: string | null;
+    created_at: string;
+    decided_at: string | null;
+    rejection_reason: string | null;
+  } | null;
   validation_created_at: string | null;
   validation_completed_at: string | null;
   failure_reason: string | null;
@@ -368,7 +379,7 @@ export async function deleteOpsCargoGroup(billOfLading: string): Promise<{ ok: b
 }
 
 export type OpsCreateApprovalUploadUrlRequest = {
-  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE';
+  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
   file_name: string;
 };
 
@@ -393,7 +404,7 @@ export async function createOpsApprovalUploadUrl(
 }
 
 export type OpsCreateCargoApprovalRequest = {
-  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE';
+  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
   file_url?: string | null;
   file_path?: string | null;
   notes?: string | null;
@@ -403,7 +414,7 @@ export type OpsCreateCargoApprovalResponse = {
   approval: {
     id: string;
     cargo_id: string;
-    kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE';
+    kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
     file_url: string | null;
     file_path: string | null;
