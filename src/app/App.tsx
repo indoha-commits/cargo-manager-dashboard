@@ -6,66 +6,25 @@ import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
 import { getSupabase } from '@/app/auth/supabase';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
 import { useThemeToggle } from '@/app/hooks/useThemeToggle';
-import { DashboardPage } from '@/app/components/pages/DashboardPage';
-import { PendingDocumentsPage } from '@/app/components/pages/PendingDocumentsPage';
-import { ValidationPage } from '@/app/components/pages/ValidationPage';
-import { RequestValidationPage } from '@/app/components/pages/RequestValidationPage';
-import { ImportCargoPage } from '@/app/components/pages/ImportCargoPage';
-import { CargoTimelinePage } from '@/app/components/pages/CargoTimelinePage';
-import { CargoRegistryPage } from '@/app/components/pages/CargoRegistryPage';
-import { CreateClientPage } from '@/app/components/pages/CreateClientPage';
-import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
-import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
-import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
-import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
-import { ManagerDashboardPage } from '@/app/components/pages/ManagerDashboardPage';
-import { fetchJson } from '@/app/api/client';
+import { ActionPanelPage } from '@/app/components/pages/manager/ActionPanelPage';
+import { PipelinePage } from '@/app/components/pages/manager/PipelinePage';
+import { MonitoringPage } from '@/app/components/pages/manager/MonitoringPage';
+import { RiskCenterPage } from '@/app/components/pages/manager/RiskCenterPage';
 
-type OpsPageId =
-  | 'dashboard'
-  | 'pending-documents'
-  | 'validation-requests'
-  | 'validation'
-  | 'operations-update'
-  | 'import-cargo'
-  | 'cargo-timeline'
-  | 'cargo-registry'
-  | 'create-client'
-  | 'delete-client'
-  | 'add-client-user'
-  | 'activity-log'
-  | 'manager-dashboard';
+type ManagerPageId = 'action-panel' | 'pipeline' | 'monitoring' | 'risk-center';
 
-const pageToPath: Record<OpsPageId, string> = {
-  dashboard: '',
-  'pending-documents': 'pending-documents',
-  'validation-requests': 'validation-requests',
-  validation: 'validation',
-  'operations-update': 'operations-update',
-  'import-cargo': 'import-cargo',
-  'cargo-timeline': 'cargo-timeline',
-  'cargo-registry': 'cargo-registry',
-  'create-client': 'create-client',
-  'delete-client': 'delete-client',
-  'add-client-user': 'add-client-user',
-  'activity-log': 'activity-log',
-  'manager-dashboard': 'manager-dashboard',
+const pageToPath: Record<ManagerPageId, string> = {
+  'action-panel': 'action-panel',
+  pipeline: 'pipeline',
+  monitoring: 'monitoring',
+  'risk-center': 'risk-center',
 };
 
-const pathToPage: Record<string, OpsPageId> = {
-  '': 'dashboard',
-  'pending-documents': 'pending-documents',
-  'validation-requests': 'validation-requests',
-  validation: 'validation',
-  'operations-update': 'operations-update',
-  'import-cargo': 'import-cargo',
-  'cargo-timeline': 'cargo-timeline',
-  'cargo-registry': 'cargo-registry',
-  'create-client': 'create-client',
-  'delete-client': 'delete-client',
-  'add-client-user': 'add-client-user',
-  'activity-log': 'activity-log',
-  'manager-dashboard': 'manager-dashboard',
+const pathToPage: Record<string, ManagerPageId> = {
+  'action-panel': 'action-panel',
+  pipeline: 'pipeline',
+  monitoring: 'monitoring',
+  'risk-center': 'risk-center',
 };
 
 function requireEnv(name: string): string {
@@ -76,15 +35,15 @@ function requireEnv(name: string): string {
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
 
-function useOpsRouteState() {
+function useManagerRouteState() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const pageSlug = location.pathname.replace(/^\//, '');
-  const normalizedPage = pageSlug && pageSlug in pathToPage ? (pageSlug as OpsPageId) : 'dashboard';
-  const currentPage = pathToPage[normalizedPage] ?? 'dashboard';
+  const normalizedPage = pageSlug && pageSlug in pathToPage ? (pageSlug as ManagerPageId) : 'action-panel';
+  const currentPage = pathToPage[normalizedPage] ?? 'action-panel';
 
-  const setCurrentPage = (page: OpsPageId) => {
+  const setCurrentPage = (page: ManagerPageId) => {
     const pagePath = pageToPath[page];
     const target = `/${pagePath}`.replace(/\/+$/, '') || '/';
     if (target === location.pathname) return;
@@ -94,77 +53,22 @@ function useOpsRouteState() {
   return { currentPage, setCurrentPage };
 }
 
-function OpsPageRenderer({
+function ManagerPageRenderer({
   currentPage,
-  setCurrentPage,
 }: {
-  currentPage: OpsPageId;
-  setCurrentPage: (page: OpsPageId) => void;
+  currentPage: ManagerPageId;
 }) {
-  const [selectedCargoId, setSelectedCargoId] = useState('');
-  const [newlyCreatedClient, setNewlyCreatedClient] = useState<{ id: string; name: string } | null>(null);
-
-  const handleViewTimeline = (cargoId: string) => {
-    setSelectedCargoId(cargoId);
-    setCurrentPage('cargo-timeline');
-  };
-
   switch (currentPage) {
-    case 'dashboard':
-      return <DashboardPage />;
-    case 'pending-documents':
-      return <PendingDocumentsPage />;
-    case 'validation-requests':
-      return <RequestValidationPage />;
-    case 'validation':
-      return <ValidationPage />;
-    case 'import-cargo':
-      return <ImportCargoPage />;
-    case 'cargo-timeline':
-      return <CargoTimelinePage preselectedCargoId={selectedCargoId} />;
-    case 'cargo-registry':
-      return (
-        <CargoRegistryPage
-          onViewTimeline={handleViewTimeline}
-          onCreateClient={() => setCurrentPage('create-client')}
-          onDeleteClient={() => setCurrentPage('delete-client')}
-          onAddClientUser={() => setCurrentPage('add-client-user')}
-          autoOpenNewCargoWithClient={newlyCreatedClient}
-          onAutoOpenConsumed={() => setNewlyCreatedClient(null)}
-        />
-      );
-    case 'create-client':
-      return (
-        <CreateClientPage
-          onCancel={() => setCurrentPage('cargo-registry')}
-          onCreated={(client) => {
-            setNewlyCreatedClient(client);
-            setCurrentPage('cargo-registry');
-          }}
-        />
-      );
-    case 'delete-client':
-      return (
-        <DeleteClientPage
-          onCancel={() => setCurrentPage('cargo-registry')}
-          onDeleted={() => setCurrentPage('cargo-registry')}
-        />
-      );
-    case 'add-client-user':
-      return (
-        <AddClientUserPage
-          onCancel={() => setCurrentPage('cargo-registry')}
-          onDone={() => setCurrentPage('cargo-registry')}
-        />
-      );
-    case 'activity-log':
-      return <ActivityLogPage />;
-    case 'operations-update':
-      return <OperationsUpdatePage />;
-    case 'manager-dashboard':
-      return <ManagerDashboardPage />;
+    case 'action-panel':
+      return <ActionPanelPage />;
+    case 'pipeline':
+      return <PipelinePage />;
+    case 'monitoring':
+      return <MonitoringPage />;
+    case 'risk-center':
+      return <RiskCenterPage />;
     default:
-      return <DashboardPage />;
+      return <ActionPanelPage />;
   }
 }
 
@@ -172,7 +76,7 @@ export default function App() {
   const [dataSourceConnected, setDataSourceConnected] = useState<boolean | null>(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { theme, toggleTheme } = useThemeToggle();
-  const { currentPage, setCurrentPage } = useOpsRouteState();
+  const { currentPage, setCurrentPage } = useManagerRouteState();
   const currentPageMemo = useMemo(() => currentPage, [currentPage]);
 
   useEffect(() => {
@@ -213,7 +117,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <Sidebar currentPage={currentPageMemo} onPageChange={(page) => setCurrentPage(page as OpsPageId)} onLogout={handleLogout} />
+      <Sidebar currentPage={currentPageMemo} onPageChange={(page) => setCurrentPage(page as ManagerPageId)} onLogout={handleLogout} />
 
       {/* Mobile top bar */}
       <div
@@ -231,9 +135,9 @@ export default function App() {
         </button>
         <div className="min-w-0 flex-1">
           <div className="text-sm" style={{ fontWeight: 600 }}>
-            Galaxy Logistics
+            NBG Manager
           </div>
-          <div className="text-xs opacity-60 truncate">Operations Cockpit</div>
+          <div className="text-xs opacity-60 truncate">Manager Dashboard</div>
         </div>
         <button
           type="button"
@@ -259,7 +163,7 @@ export default function App() {
         <SheetContent side="left" className="p-0" style={{ backgroundColor: 'var(--sidebar)' }}>
           <OpsSidebarContent
             currentPage={currentPageMemo}
-            onPageChange={(page) => setCurrentPage(page as OpsPageId)}
+            onPageChange={(page) => setCurrentPage(page as ManagerPageId)}
             onLogout={handleLogout}
             onNavigate={() => setMobileNavOpen(false)}
           />
@@ -287,12 +191,12 @@ export default function App() {
           </button>
         </div>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/action-panel" replace />} />
           <Route
             path="/:pageSlug"
-            element={<OpsPageRenderer key={currentPageMemo} currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
+            element={<ManagerPageRenderer key={currentPageMemo} currentPage={currentPageMemo} />}
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/action-panel" replace />} />
         </Routes>
       </main>
     </div>

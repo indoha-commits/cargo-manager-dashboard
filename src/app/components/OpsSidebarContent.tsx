@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Trash2, UserPlus, Radar } from 'lucide-react';
+import { AlertTriangle, Activity, GitBranch, LogOut, Radar } from 'lucide-react';
 
 interface OpsSidebarContentProps {
   currentPage: string;
@@ -8,18 +8,10 @@ interface OpsSidebarContentProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'pending-documents', label: 'Pending Documents', icon: FileText },
-  { id: 'validation-requests', label: 'Validation Requests', icon: Inbox },
-  { id: 'validation', label: 'Validation Queue', icon: CheckSquare },
-  { id: 'operations-update', label: 'Operations Update', icon: ClipboardCheck },
-  { id: 'manager-dashboard', label: 'Manager Dashboard', icon: Radar },
-  { id: 'import-cargo', label: 'Import Cargo', icon: DownloadCloud },
-  { id: 'cargo-timeline', label: 'Cargo Timeline', icon: Clock },
-  { id: 'cargo-registry', label: 'Cargo Registry', icon: Package },
-  { id: 'activity-log', label: 'Activity Log', icon: Activity },
-  { id: 'add-client-user', label: 'Add Client User', icon: UserPlus },
-  { id: 'delete-client', label: 'Delete Client', icon: Trash2 },
+  { id: 'action-panel', label: 'Action Panel', icon: Radar },
+  { id: 'pipeline', label: 'Pipeline', icon: GitBranch },
+  { id: 'monitoring', label: 'Monitoring', icon: Activity },
+  { id: 'risk-center', label: 'Risk Center', icon: AlertTriangle },
 ] as const;
 
 export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {
@@ -31,7 +23,7 @@ export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavig
           <img src="/indataflow-logo.png" alt="InDataFlow" className="h-[56px] md:h-[67px] w-auto brightness-0 invert" />
         </div>
         <p className="text-xs opacity-60" style={{ color: 'var(--sidebar-foreground)' }}>
-          Operations Cockpit
+          Manager Cockpit
         </p>
       </div>
 

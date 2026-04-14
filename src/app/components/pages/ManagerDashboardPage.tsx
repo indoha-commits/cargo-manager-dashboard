@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowUpRight, Clock3, PackageSearch } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Clock3, PackageSearch, Siren } from 'lucide-react';
 import { getOpsCargoRegistry, getOpsValidationQueue, type OpsCargoRegistryResponse, type OpsValidationQueueResponse } from '@/app/api/ops';
 
 type ManagerContainer = {
@@ -12,6 +12,18 @@ type ManagerContainer = {
   expected_release_date: string | null;
   verification_status: 'validated' | 'pending_validation' | 'pending_upload' | 'failed' | 'unknown';
   validation_created_at: string | null;
+};
+
+type PipelineState = 'ready_dispatch' | 'releasing_soon' | 'waiting' | 'in_transit';
+type PriorityLevel = 'red' | 'yellow' | 'green';
+
+type EnrichedContainer = ManagerContainer & {
+  arrival_state: string;
+  release_state: string;
+  days_to_release: number | null;
+  recommended_action: string;
+  pipeline_state: PipelineState;
+  priority_level: PriorityLevel;
 };
 
 function formatLabel(value?: string | null): string {
@@ -42,6 +54,29 @@ function decisionAction(daysToRelease: number | null, releaseStatus: string): st
   if (daysToRelease === 1) return 'Confirm';
   if (daysToRelease <= 0) return 'Escalate overdue release';
   return 'Monitor';
+}
+
+function pipelineState(row: ManagerContainer): PipelineState {
+  const state = deriveArrivalRelease(row.latest_event_type);
+  const days = toDays(row.expected_release_date);
+  if (state.release === 'released') return 'ready_dispatch';
+  if (state.arrival === 'in_transit') return 'in_transit';
+  if (days !== null && days <= 2) return 'releasing_soon';
+  return 'waiting';
+}
+
+function priorityLevel(row: ManagerContainer): PriorityLevel {
+  const state = deriveArrivalRelease(row.latest_event_type);
+  const days = toDays(row.expected_release_date);
+  if (state.release === 'released') return 'red';
+  if (days !== null && days <= 2) return 'yellow';
+  return 'green';
+}
+
+function priorityBadge(level: PriorityLevel): { label: string; bg: string; color: string } {
+  if (level === 'red') return { label: 'ACTION NOW', bg: 'rgba(239,68,68,0.15)', color: 'rgb(220,38,38)' };
+  if (level === 'yellow') return { label: 'PREPARE', bg: 'rgba(245,158,11,0.18)', color: 'rgb(180,83,9)' };
+  return { label: 'STABLE', bg: 'rgba(34,197,94,0.15)', color: 'rgb(22,163,74)' };
 }
 
 function priorityScore(row: ManagerContainer): number {
@@ -128,18 +163,98 @@ export function ManagerDashboardPage() {
     return flat;
   }, [registry, validation]);
 
+  const enrichedRows = useMemo<EnrichedContainer[]>(() => {
+    return rows.map((r) => {
+      const state = deriveArrivalRelease(r.latest_event_type);
+      const days = toDays(r.expected_release_date);
+      return {
+        ...r,
+        arrival_state: state.arrival,
+        release_state: state.release,
+        days_to_release: days,
+        recommended_action: decisionAction(days, state.release),
+        pipeline_state: pipelineState(r),
+        priority_level: priorityLevel(r),
+      };
+    });
+  }, [rows]);
+
   const topPriority = useMemo(() => {
-    return rows
+    return enrichedRows
       .map((r) => ({ ...r, score: priorityScore(r) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-  }, [rows]);
+  }, [enrichedRows]);
 
   const risks = useMemo(() => {
-    return rows
+    return enrichedRows
       .flatMap((r) => riskFlags(r).map((flag) => ({ cargo_id: r.cargo_id, client_name: r.client_name, flag })))
       .slice(0, 20);
-  }, [rows]);
+  }, [enrichedRows]);
+
+  const grouped = useMemo(() => {
+    return {
+      ready_dispatch: enrichedRows.filter((r) => r.pipeline_state === 'ready_dispatch'),
+      releasing_soon: enrichedRows.filter((r) => r.pipeline_state === 'releasing_soon'),
+      waiting: enrichedRows.filter((r) => r.pipeline_state === 'waiting'),
+      in_transit: enrichedRows.filter((r) => r.pipeline_state === 'in_transit'),
+    };
+  }, [enrichedRows]);
+
+  const actionPanel = useMemo(() => {
+    const releasedCount = grouped.ready_dispatch.length;
+    const releasingTomorrowCount = enrichedRows.filter((r) => r.days_to_release === 1).length;
+    const delayedVerificationCount = enrichedRows.filter((r) => r.verification_status === 'failed').length;
+    return { releasedCount, releasingTomorrowCount, delayedVerificationCount };
+  }, [grouped.ready_dispatch.length, enrichedRows]);
+
+  const renderPipelineTable = (title: string, items: EnrichedContainer[]) => (
+    <div className="bg-card border rounded-lg" style={{ borderColor: 'var(--border)' }}>
+      <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+        <h2>{title}</h2>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-4 py-4 text-sm opacity-60">No containers in this stage.</div>
+      ) : (
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left opacity-70">
+                <th className="px-4 py-3">Container</th>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => {
+                const badge = priorityBadge(r.priority_level);
+                const statusLabel = r.release_state === 'released'
+                  ? 'Released'
+                  : r.days_to_release === null
+                    ? 'Not released'
+                    : `Release in ${r.days_to_release} day${r.days_to_release === 1 ? '' : 's'}`;
+                return (
+                  <tr key={`${title}-${r.cargo_id}`} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                    <td className="px-4 py-3 font-mono">{r.cargo_id}</td>
+                    <td className="px-4 py-3">{r.client_name}</td>
+                    <td className="px-4 py-3">{statusLabel}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: badge.bg, color: badge.color, fontWeight: 700 }}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3" style={{ fontWeight: 600 }}>{r.recommended_action}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -154,18 +269,30 @@ export function ManagerDashboardPage() {
         <div className="bg-card rounded-lg border p-6 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--destructive)' }}>{error}</div>
       ) : (
         <>
+          <div className="bg-card border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Siren className="w-4 h-4" style={{ color: 'rgb(220, 38, 38)' }} />
+              <h2>ACTION REQUIRED</h2>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div>🚛 {actionPanel.releasedCount} containers released → assign trucks</div>
+              <div>⚠️ {actionPanel.releasingTomorrowCount} containers releasing tomorrow → pre-assign</div>
+              <div>❗ {actionPanel.delayedVerificationCount} delayed verification → fix</div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-card border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="text-xs opacity-60">Total Containers</div>
-              <div className="text-3xl mt-2">{rows.length}</div>
+              <div className="text-3xl mt-2">{enrichedRows.length}</div>
             </div>
             <div className="bg-card border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="text-xs opacity-60">Validated</div>
-              <div className="text-3xl mt-2">{rows.filter((r) => r.verification_status === 'validated').length}</div>
+              <div className="text-3xl mt-2">{enrichedRows.filter((r) => r.verification_status === 'validated').length}</div>
             </div>
             <div className="bg-card border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="text-xs opacity-60">Pending Upload</div>
-              <div className="text-3xl mt-2">{rows.filter((r) => r.verification_status === 'pending_upload').length}</div>
+              <div className="text-3xl mt-2">{enrichedRows.filter((r) => r.verification_status === 'pending_upload').length}</div>
             </div>
             <div className="bg-card border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="text-xs opacity-60">Risk Alerts</div>
@@ -192,9 +319,10 @@ export function ManagerDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => {
+                  {enrichedRows.map((r) => {
                     const state = deriveArrivalRelease(r.latest_event_type);
                     const days = toDays(r.expected_release_date);
+                    const badge = priorityBadge(r.priority_level);
                     return (
                       <tr key={r.cargo_id} className="border-t" style={{ borderColor: 'var(--border)' }}>
                         <td className="px-4 py-3 font-mono">{r.cargo_id}</td>
@@ -203,7 +331,11 @@ export function ManagerDashboardPage() {
                         <td className="px-4 py-3">{formatLabel(r.verification_status)}</td>
                         <td className="px-4 py-3">{formatLabel(state.release)}</td>
                         <td className="px-4 py-3">{r.expected_release_date ? new Date(r.expected_release_date).toLocaleDateString() : '—'}</td>
-                        <td className="px-4 py-3">{days === null ? '—' : days}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: badge.bg, color: badge.color, fontWeight: 700 }}>
+                            {days === null ? '—' : days}
+                          </span>
+                        </td>
                       </tr>
                     );
                   })}
@@ -219,16 +351,14 @@ export function ManagerDashboardPage() {
                 <h2>Decision Engine</h2>
               </div>
               <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                {rows.slice(0, 12).map((r) => {
-                  const state = deriveArrivalRelease(r.latest_event_type);
-                  const action = decisionAction(toDays(r.expected_release_date), state.release);
+                {enrichedRows.slice(0, 12).map((r) => {
                   return (
                     <div key={`decision-${r.cargo_id}`} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div>
                         <div className="font-mono text-sm">{r.cargo_id}</div>
                         <div className="text-xs opacity-60">{r.client_name}</div>
                       </div>
-                      <div className="text-sm">{action}</div>
+                      <div className="text-sm">{r.recommended_action}</div>
                     </div>
                   );
                 })}
@@ -253,6 +383,11 @@ export function ManagerDashboardPage() {
               </div>
             </div>
           </div>
+
+          {renderPipelineTable('🚨 Ready to Dispatch', grouped.ready_dispatch)}
+          {renderPipelineTable('⚠️ Releasing Soon', grouped.releasing_soon)}
+          {renderPipelineTable('🕒 Waiting', grouped.waiting)}
+          {renderPipelineTable('🚛 In Transit', grouped.in_transit)}
 
           <div className="bg-card border rounded-lg" style={{ borderColor: 'var(--border)' }}>
             <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
