@@ -18,6 +18,7 @@ import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
 import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
+import { ManagerDashboardPage } from '@/app/components/pages/ManagerDashboardPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -32,7 +33,8 @@ type OpsPageId =
   | 'create-client'
   | 'delete-client'
   | 'add-client-user'
-  | 'activity-log';
+  | 'activity-log'
+  | 'manager-dashboard';
 
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
@@ -47,6 +49,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
+  'manager-dashboard': 'manager-dashboard',
 };
 
 const pathToPage: Record<string, OpsPageId> = {
@@ -62,6 +65,7 @@ const pathToPage: Record<string, OpsPageId> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
+  'manager-dashboard': 'manager-dashboard',
 };
 
 function requireEnv(name: string): string {
@@ -157,6 +161,8 @@ function OpsPageRenderer({
       return <ActivityLogPage />;
     case 'operations-update':
       return <OperationsUpdatePage />;
+    case 'manager-dashboard':
+      return <ManagerDashboardPage />;
     default:
       return <DashboardPage />;
   }
@@ -177,7 +183,7 @@ export default function App() {
   // Gate: show data source setup until connected
   if (dataSourceConnected === false) {
     // External data sources disabled; skip setup
-    return <>{children}</>;
+    return null;
   }
 
   if (dataSourceConnected === null) {
@@ -207,7 +213,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <Sidebar currentPage={currentPageMemo} onPageChange={setCurrentPage} onLogout={handleLogout} />
+      <Sidebar currentPage={currentPageMemo} onPageChange={(page) => setCurrentPage(page as OpsPageId)} onLogout={handleLogout} />
 
       {/* Mobile top bar */}
       <div
@@ -253,7 +259,7 @@ export default function App() {
         <SheetContent side="left" className="p-0" style={{ backgroundColor: 'var(--sidebar)' }}>
           <OpsSidebarContent
             currentPage={currentPageMemo}
-            onPageChange={setCurrentPage}
+            onPageChange={(page) => setCurrentPage(page as OpsPageId)}
             onLogout={handleLogout}
             onNavigate={() => setMobileNavOpen(false)}
           />

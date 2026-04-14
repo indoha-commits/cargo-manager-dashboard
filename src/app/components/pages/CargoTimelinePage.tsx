@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
-import { getOpsCargoTimeline, getOpsDocumentSignedUrl, type OpsCargoTimelineResponse } from '@/app/api/ops';
+import { getOpsCargoTimeline, getOpsDocumentSignedUrl, getOpsApprovalSignedUrl, type OpsCargoTimelineResponse } from '@/app/api/ops';
 import { requiredDocsForCategory, type CargoCategory, formatLabel as formatCategoryLabel } from '@/app/api/categories';
 import { getSupabase } from '@/app/auth/supabase';
 
@@ -11,6 +11,12 @@ interface CargoTimelinePageProps {
 function formatLabel(value?: string | null): string {
   if (!value) return 'Unknown';
   return value.replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (s) => s.toUpperCase());
+}
+
+function approvalKindForDocType(docType: string): string | null {
+  if (docType === 'DRAFT_DECLARATION') return 'DECLARATION_DRAFT';
+  if (docType === 'WH7') return 'WH7_DOC';
+  return docType;
 }
 
 type DerivedTimelineEvent = {
@@ -219,16 +225,14 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
     }
   };
 
-  const openApproval = (approval: OpsCargoTimelineResponse['approvals'][number]) => {
+  const openApproval = async (approval: OpsCargoTimelineResponse['approvals'][number]) => {
     setActionError(null);
-    if (approval.file_url && approval.file_url.startsWith('https://drive.google.com')) {
-      window.open(approval.file_url, '_blank', 'noopener,noreferrer');
-      return;
+    try {
+      const res = await getOpsApprovalSignedUrl(approval.id);
+      window.open(res.url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
     }
-
-    // NOTE: the worker currently exposes /client/approvals/:id/signed-url but not an /ops equivalent.
-    // If we need to support storage-backed ops approvals here, we should add /ops/approvals/:id/signed-url in the worker.
-    setActionError('Approval file is not directly accessible yet (missing ops signed-url endpoint).');
   };
 
   return (
@@ -299,7 +303,7 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
               <div>
                 <div className="text-sm opacity-60">Cargo</div>
                 <div className="font-mono text-lg" style={{ color: 'var(--primary)' }}>
-                  {data.cargo.container_id}
+                  {data.cargo.id}
                 </div>
                 <div className="text-sm opacity-60 mt-1">Client: {data.cargo.client_name}</div>
                 <div className="text-sm opacity-60">Category: {formatLabel(data.cargo.category)}</div>
@@ -321,7 +325,7 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
               ) : (
                 requiredDocs.map((docType) => {
                   const docs = documentsByType[docType] ?? [];
-                  const approvals = approvalsByKind[docType] ?? [];
+                  const approvals = approvalsByKind[approvalKindForDocType(docType) ?? docType] ?? [];
                   const latestDoc = docs[0];
                   const latestApproval = approvals[0];
                   const status = latestDoc?.status === 'VERIFIED'
@@ -331,7 +335,6 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
                     : latestApproval?.status
                     ? formatLabel(latestApproval.status)
                     : 'Pending';
-                  const actionUrl = latestDoc?.drive_url ?? latestApproval?.file_url ?? null;
                   const uploadedAt = latestDoc?.uploaded_at ?? latestApproval?.created_at ?? null;
                   const verifiedAt = latestDoc?.verified_at ?? latestApproval?.decided_at ?? null;
 
@@ -350,9 +353,17 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
                         )}
                       </div>
                       <div>
-                        {actionUrl ? (
+                        {latestDoc ? (
                           <button
-                            onClick={() => onOpenDocument(actionUrl, `${docType}-${latestDoc?.id ?? latestApproval?.id}`)}
+                            onClick={() => openDoc(latestDoc.id)}
+                            className="px-4 py-2 rounded border text-sm"
+                            style={{ borderColor: 'var(--border)' }}
+                          >
+                            Open
+                          </button>
+                        ) : latestApproval ? (
+                          <button
+                            onClick={() => void openApproval(latestApproval)}
                             className="px-4 py-2 rounded border text-sm"
                             style={{ borderColor: 'var(--border)' }}
                           >
@@ -365,6 +376,41 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
                     </div>
                   );
                 })
+              )}
+            </div>
+          </div>
+
+          <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h2>Validation Queue Documents</h2>
+              <p className="text-sm opacity-60">Assessment, Draft, WH7, Exit Note, IM8, and pathway approvals</p>
+            </div>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {data.approvals.length === 0 ? (
+                <div className="px-6 py-6 text-sm opacity-60">No validation queue documents yet.</div>
+              ) : (
+                data.approvals.map((a) => (
+                  <div key={a.id} className="px-6 py-4 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-baseline gap-3">
+                        <div className="text-sm" style={{ fontWeight: 500 }}>
+                          {formatLabel(a.kind)}
+                        </div>
+                        <div className="text-xs opacity-60">{formatLabel(a.status)}</div>
+                      </div>
+                      <div className="text-xs opacity-60 mt-1">Uploaded {new Date(a.created_at).toLocaleString()}</div>
+                      {a.decided_at && <div className="text-xs opacity-60">Validated {new Date(a.decided_at).toLocaleString()}</div>}
+                    </div>
+
+                    <button
+                      onClick={() => void openApproval(a)}
+                      className="px-4 py-2 rounded border text-sm"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      Open
+                    </button>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -418,43 +464,6 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h2>Approvals</h2>
-            </div>
-            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-              {data.approvals.length === 0 ? (
-                <div className="px-6 py-6 text-sm opacity-60">No approvals.</div>
-              ) : (
-                data.approvals.map((a) => (
-                  <div key={a.id} className="px-6 py-4 flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-baseline gap-3">
-                        <div className="text-sm" style={{ fontWeight: 500 }}>
-                          {formatLabel(a.kind)}
-                        </div>
-                        <div className="text-xs opacity-60">{formatLabel(a.status)}</div>
-                      </div>
-                      <div className="text-xs opacity-60 mt-1">Created {new Date(a.created_at).toLocaleString()}</div>
-                      {a.rejection_reason && (
-                        <div className="text-sm" style={{ color: 'var(--destructive)' }}>
-                          {a.rejection_reason}
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => openApproval(a)}
-                      className="px-4 py-2 rounded border text-sm"
-                      style={{ borderColor: 'var(--border)' }}
-                    >
-                      Open
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
       )}
     </div>

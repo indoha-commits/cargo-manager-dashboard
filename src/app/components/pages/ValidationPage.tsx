@@ -520,7 +520,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'ASSESSMENT')}
-                                            disabled={!canUploadRequired || Boolean(busy[assessmentKey]) || (it.assessment && it.assessment.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[assessmentKey]) || Boolean(it.assessment && it.assessment.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -593,7 +593,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'DECLARATION_DRAFT')}
-                                            disabled={!canUploadRequired || Boolean(busy[draftKey]) || (it.draft && it.draft.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[draftKey]) || Boolean(it.draft && it.draft.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -666,7 +666,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
-                                            disabled={!canUploadRequired || Boolean(busy[wh7Key]) || (it.wh7 && it.wh7.status !== 'REJECTED')}
+                                            disabled={!canUploadRequired || Boolean(busy[wh7Key]) || Boolean(it.wh7 && it.wh7.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -739,7 +739,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
-                                            disabled={!canUploadOptional || Boolean(busy[exitNoteKey]) || (it.exit_note && it.exit_note.status !== 'REJECTED')}
+                                            disabled={!canUploadOptional || Boolean(busy[exitNoteKey]) || Boolean(it.exit_note && it.exit_note.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
@@ -812,7 +812,7 @@ export function ValidationPage() {
                                           <button
                                             type="button"
                                             onClick={() => pickFile(it.cargo_id, 'IM8')}
-                                            disabled={!canUploadOptional || Boolean(busy[im8Key]) || (it.im8 && it.im8.status !== 'REJECTED')}
+                                            disabled={!canUploadOptional || Boolean(busy[im8Key]) || Boolean(it.im8 && it.im8.status !== 'REJECTED')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
                                             style={{ borderColor: 'var(--border)' }}
                                           >
