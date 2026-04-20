@@ -3,12 +3,15 @@ import { fetchJson } from './client';
 export type MeResponse = {
   id: string;
   email: string;
-  role: 'client' | 'ops' | 'admin';
+  role: 'client' | 'ops' | 'admin' | 'manager';
   client_id: string | null;
+  tenant_id?: string | null;
+  dashboard_type?: string | null;
+  membership_status?: string | null;
 };
 
 export async function getMe(): Promise<MeResponse> {
-  return await fetchJson<MeResponse>('/me');
+  return await fetchJson<MeResponse>('/me?prefer_dashboard=manager');
 }
 
 export type ClaimInternalSessionResponse =

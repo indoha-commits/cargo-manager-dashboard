@@ -1,8 +1,13 @@
+import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useManagerData } from './data';
 import { ManagerTable } from './ManagerTable';
 
 export function PipelinePage() {
   const { loading, error, rows } = useManagerData();
+  const location = useLocation();
+  const stage = useMemo(() => new URLSearchParams(location.search).get('stage')?.trim() || '', [location.search]);
+
   const ready = rows.filter((r) => r.pipeline_state === 'ready_dispatch');
   const soon = rows.filter((r) => r.pipeline_state === 'releasing_soon');
   const waiting = rows.filter((r) => r.pipeline_state === 'waiting');
@@ -20,13 +25,15 @@ export function PipelinePage() {
     </div>
   );
 
+  const onlyStage = (key: string) => stage.toLowerCase() === key;
+
   return (
     <div className="max-w-6xl mx-auto space-y-4">
       <h1>Pipeline</h1>
-      {section('🚨 Ready to Dispatch', ready)}
-      {section('⚠️ Releasing Soon', soon)}
-      {section('🕒 Waiting', waiting)}
-      {section('🚛 In Transit', transit)}
+      {(stage === '' || onlyStage('ready_dispatch')) && section('🚨 Ready to Dispatch', ready)}
+      {(stage === '' || onlyStage('releasing_soon')) && section('⚠️ Releasing Soon', soon)}
+      {(stage === '' || onlyStage('waiting')) && section('🕒 Waiting', waiting)}
+      {(stage === '' || onlyStage('in_transit')) && section('🚛 In Transit', transit)}
     </div>
   );
 }

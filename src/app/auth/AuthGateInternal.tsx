@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { initSupabaseAuth, setSessionFromUrlHash } from './supabase';
-import { claimInternalSession, getMe, heartbeatInternalSession } from '../api/ops';
+import { getMe } from '../api/ops';
 
 function requireEnv(name: string): string {
   const v = (import.meta.env as any)[name] as string | undefined;
@@ -10,31 +10,9 @@ function requireEnv(name: string): string {
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
 
-function getOrCreateInternalSessionId(): string {
-  const key = 'internal_session_id';
-  const existing = window.sessionStorage.getItem(key);
-  if (existing) return existing;
-
-  // Prefer an id passed from the auth portal (it already claimed the lock).
-  // The auth portal redirects to /auth/callback#...&internal_session_id=...
-  const hash = window.location.hash;
-  if (hash && hash.startsWith('#')) {
-    const params = new URLSearchParams(hash.slice(1));
-    const fromHash = params.get('internal_session_id');
-    if (fromHash) {
-      window.sessionStorage.setItem(key, fromHash);
-      return fromHash;
-    }
-  }
-
-  const id = crypto.randomUUID();
-  window.sessionStorage.setItem(key, id);
-  return id;
-}
-
 export function AuthGateInternal({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -61,17 +39,32 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       try {
-        unsubscribe = await initSupabaseAuth(async () => {
-          const id = getOrCreateInternalSessionId();
-          setSessionId(id);
+        unsubscribe = await initSupabaseAuth(async ({ authenticated }) => {
+          if (!authenticated) {
+            setAccessDenied(null);
+            return;
+          }
+
+          // Manager dashboard is allowlisted via mt_tenant_users.dashboard_type='manager'
+          // and gated by membership_status='active'.
           try {
-            const result = await claimInternalSession(id);
-            if ('ok' in result && !result.ok && result.error === 'session_locked') {
-              alert(result.detail);
+            const me = await getMe();
+            const dt = String(me.dashboard_type || '');
+            const ms = String(me.membership_status || 'active');
+            if (dt !== 'manager') {
+              setAccessDenied('This dashboard is restricted to approved manager accounts.');
+              return;
+            }
+            if (ms !== 'active') {
+              setAccessDenied(`Your manager access is not active (status: ${ms}).`);
+              return;
             }
           } catch (e) {
-            console.warn('Failed to claim internal session', e);
+            setAccessDenied(`Unable to verify manager access: ${e instanceof Error ? e.message : String(e)}`);
+            return;
           }
+
+          setAccessDenied(null);
         });
       } catch (e) {
         console.warn('Failed to initialize Supabase auth', e);
@@ -88,20 +81,30 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!ready || !sessionId) return;
-
-    const interval = window.setInterval(() => {
-      void heartbeatInternalSession(sessionId).catch((err) =>
-        console.warn('Failed to heartbeat internal session', err)
-      );
-    }, 5 * 60 * 1000);
-
-    return () => window.clearInterval(interval);
-  }, [ready, sessionId]);
-
   if (!ready) {
     return null;
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-lg w-full border rounded-lg p-6 bg-card text-foreground">
+          <div className="text-lg font-semibold">Access restricted</div>
+          <div className="mt-2 text-sm text-muted-foreground">{accessDenied}</div>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              className="text-sm px-3 py-2 rounded border"
+              onClick={() => {
+                window.location.href = authPortalUrl;
+              }}
+            >
+              Back to login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

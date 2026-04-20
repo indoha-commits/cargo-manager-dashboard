@@ -5,6 +5,7 @@ import { getOpsClients } from '@/app/api/ops';
 import { fetchJson } from '@/app/api/client';
 
 type Category = 'MEDS_BEVERAGE' | 'RAW_MATERIALS' | 'ELECTRONICS';
+type StartingMilestone = 'DOCS_UPLOADED' | 'DOCS_VERIFIED' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL';
 
 function requiredDocsForCategory(category: Category | '', milestone: string = ''): string[] {
   if (!category) return [];
@@ -29,7 +30,8 @@ export function ImportCargoPage() {
   const [selectedCargoId, setSelectedCargoId] = useState<string>('');
 
   const [milestoneCompletedAt, setMilestoneCompletedAt] = useState<string>('');
-  const [startingMilestone, setStartingMilestone] = useState<'DOCS_UPLOADED' | 'DOCS_VERIFIED' | 'DEPARTED_PORT' | 'IN_ROUTE_RUSUMO' | 'PHYSICAL_VERIFICATION' | 'WAREHOUSE_ARRIVAL'>('DOCS_UPLOADED');
+  const [startingMilestone, setStartingMilestone] = useState<StartingMilestone>('DOCS_UPLOADED'); // default + apply-to-all
+  const [milestoneByContainer, setMilestoneByContainer] = useState<Record<string, StartingMilestone>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,13 +47,23 @@ export function ImportCargoPage() {
   const [notAvailableCustomsByContainer, setNotAvailableCustomsByContainer] = useState<Record<string, Record<string, boolean>>>({});
 
   const requiredDocs = useMemo(() => requiredDocsForCategory(category), [category]);
-  const customsDocTypes = useMemo(() => ['WH7', 'ASSESSMENT', 'DRAFT_DECLARATION', 'EXIT_NOTE', 'IM4', 'T1'], []);
+  const customsBaseDocTypes = useMemo(() => {
+    if (clearancePathway === 'T1_TRANSIT') {
+      return ['DRAFT_DECLARATION', 'ASSESSMENT', 'T1', 'T1_FORM', 'WH7', 'CHANGE_OF_OWNERSHIP', 'IM8'];
+    }
+    return ['DRAFT_DECLARATION', 'ASSESSMENT', 'WH7', 'EXIT_NOTE'];
+  }, [clearancePathway]);
   const previewContainerIds = useMemo(() => {
     if (!isGroupImport) return selectedCargoId.trim() ? [selectedCargoId.trim()] : [];
     const bol = selectedCargoId.trim();
     if (!bol) return [];
     return Array.from({ length: containerCount }, (_, i) => `${bol}-${String(i + 1).padStart(3, '0')}`);
   }, [isGroupImport, selectedCargoId, containerCount]);
+
+  const customsDocTypesForContainer = (containerId: string) =>
+    clearancePathway === 'T1_TRANSIT'
+      ? customsBaseDocTypes // already includes IM8 as default in manager
+      : customsBaseDocTypes;
   const setCustomsFile = (containerId: string, docType: string, file: File | null) => {
     setCustomsFilesByContainer((prev) => {
       const byContainer = { ...(prev[containerId] ?? {}) };
@@ -93,8 +105,20 @@ export function ImportCargoPage() {
   const POST_DEPARTURE_MILESTONES = ['DEPARTED_PORT', 'IN_ROUTE_RUSUMO', 'PHYSICAL_VERIFICATION', 'WAREHOUSE_ARRIVAL'];
 
   const needsAssessment = useMemo(() => {
-    return POST_DEPARTURE_MILESTONES.includes(startingMilestone);
-  }, [startingMilestone]);
+    if (!previewContainerIds.length) return POST_DEPARTURE_MILESTONES.includes(startingMilestone);
+    return previewContainerIds.some((id) => POST_DEPARTURE_MILESTONES.includes(milestoneByContainer[id] ?? startingMilestone));
+  }, [previewContainerIds, milestoneByContainer, startingMilestone]);
+
+  useEffect(() => {
+    if (!previewContainerIds.length) return;
+    setMilestoneByContainer((prev) => {
+      const next = { ...prev };
+      for (const id of previewContainerIds) {
+        if (next[id] == null) next[id] = startingMilestone;
+      }
+      return next;
+    });
+  }, [previewContainerIds, startingMilestone]);
   
   const renderFileUpload = (label: string, file: File | null, setFile: (file: File | null) => void) => (
     <div className="border rounded-lg p-5" style={{ borderColor: file ? 'var(--gold-accent)' : 'var(--border)', backgroundColor: file ? 'rgba(212, 175, 55, 0.05)' : 'transparent' }}>
@@ -208,6 +232,9 @@ export function ImportCargoPage() {
       let containerIds: string[] = [];
 
       if (isGroupImport) {
+        const perContainerMilestones = Object.fromEntries(
+          previewContainerIds.map((containerId) => [containerId, milestoneByContainer[containerId] ?? startingMilestone])
+        );
         // Group import: register multiple containers under one BoL
         const bulkData = await fetchJson<{ containers: Array<{ cargo_id: string; container_id: string }> }>(`/ops/cargo/bulk-import`, {
           method: 'POST',
@@ -217,7 +244,8 @@ export function ImportCargoPage() {
             container_count: containerCount,
             category,
             clearance_pathway: clearancePathway,
-            starting_milestone: startingMilestone,
+            starting_milestone: perContainerMilestones[previewContainerIds[0]] ?? startingMilestone,
+            container_milestones: perContainerMilestones,
             milestone_completed_at: completedAtIso,
             not_available_docs: notAvailableDocsList,
             not_available_customs_docs: notAvailableCustomsList,
@@ -235,7 +263,7 @@ export function ImportCargoPage() {
             category,
             clearance_pathway: clearancePathway,
             milestone_completed_at: completedAtIso,
-            starting_milestone: startingMilestone,
+            starting_milestone: milestoneByContainer[selectedCargoId.trim()] ?? startingMilestone,
             not_available_docs: notAvailableDocsList,
             not_available_customs_docs: notAvailableCustomsList,
           }),
@@ -252,7 +280,7 @@ export function ImportCargoPage() {
           await uploadFileToStorage(file, path);
           await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
             method: 'PATCH',
-            body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
+            body: JSON.stringify({ client_id: selectedClientId, provider_path: path, status: 'VERIFIED', import_mode: true }),
           });
         }
 
@@ -260,6 +288,9 @@ export function ImportCargoPage() {
         if (needsAssessment) {
           const containerFiles = customsFilesByContainer[cargoId] ?? {};
           const containerNotAvailable = notAvailableCustomsByContainer[cargoId] ?? {};
+          const containerMilestone = milestoneByContainer[cargoId] ?? startingMilestone;
+          if (!POST_DEPARTURE_MILESTONES.includes(containerMilestone)) continue;
+          const customsDocTypes = customsDocTypesForContainer(cargoId);
           for (const docType of customsDocTypes) {
             const file = containerFiles[docType];
             if (file && !containerNotAvailable[docType]) {
@@ -267,7 +298,7 @@ export function ImportCargoPage() {
               await uploadFileToStorage(file, path);
               await fetchJson(`/ops/cargo/${cargoId}/documents/${docType}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ provider_path: path, status: 'VERIFIED', import_mode: true }),
+                body: JSON.stringify({ client_id: selectedClientId, provider_path: path, status: 'VERIFIED', import_mode: true }),
               });
             }
           }
@@ -286,6 +317,7 @@ export function ImportCargoPage() {
       setNotAvailableDocs({});
       setCustomsFilesByContainer({});
       setNotAvailableCustomsByContainer({});
+      setMilestoneByContainer({});
       setSelectedCargoId('');
       setMilestoneCompletedAt('');
       setContainerCount(2);
@@ -490,7 +522,7 @@ export function ImportCargoPage() {
 
           <div>
             <label className="block text-sm opacity-70 mb-2" style={{ fontWeight: 500 }}>
-              Starting Milestone
+              Milestone (default / apply to all)
             </label>
             <div className="relative">
               <select
@@ -509,6 +541,62 @@ export function ImportCargoPage() {
               <ChevronDown className="w-4 h-4 opacity-50 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
+
+          {previewContainerIds.length > 0 && (
+            <div className="col-span-2 border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="text-sm" style={{ fontWeight: 600 }}>Milestone per container</div>
+                {previewContainerIds.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMilestoneByContainer((prev) => {
+                        const next = { ...prev };
+                        for (const id of previewContainerIds) next[id] = startingMilestone;
+                        return next;
+                      })
+                    }
+                    className="text-xs px-3 py-1.5 rounded-md border"
+                    style={{ borderColor: 'var(--border)', opacity: 0.9 }}
+                  >
+                    Apply “{startingMilestone.replace(/_/g, ' ')}” to all
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                {previewContainerIds.map((containerId) => {
+                  const currentMilestone = milestoneByContainer[containerId] ?? startingMilestone;
+                  return (
+                    <div key={containerId} className="border rounded-md p-3" style={{ borderColor: 'var(--border)' }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-mono text-sm">{containerId}</div>
+                      </div>
+                      <div className="mt-3">
+                        <select
+                          value={currentMilestone}
+                          onChange={(e) =>
+                            setMilestoneByContainer((prev) => ({
+                              ...prev,
+                              [containerId]: e.target.value as StartingMilestone,
+                            }))
+                          }
+                          className="w-full px-3 py-2 rounded-md border text-sm"
+                          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
+                        >
+                          <option value="DOCS_UPLOADED">Docs Uploaded</option>
+                          <option value="DOCS_VERIFIED">Docs Verified</option>
+                          <option value="DEPARTED_PORT">Departed from Port</option>
+                          <option value="IN_ROUTE_RUSUMO">In Route to Rusumo</option>
+                          <option value="PHYSICAL_VERIFICATION">Physical Verification</option>
+                          <option value="WAREHOUSE_ARRIVAL">Warehouse Arrival</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="col-span-2">
             <div className="text-xs opacity-60 mb-2">Required document folders</div>
