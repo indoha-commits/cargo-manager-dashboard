@@ -134,10 +134,8 @@ export default function App() {
           <Menu className="w-5 h-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <div className="text-sm" style={{ fontWeight: 600 }}>
-            NBG Manager
-          </div>
-          <div className="text-xs opacity-60 truncate">Manager Dashboard</div>
+          <div className="text-sm font-semibold leading-tight">Manager Dashboard</div>
+          <div className="text-xs opacity-50 truncate leading-tight">Operations cockpit</div>
         </div>
         <button
           type="button"
@@ -187,7 +185,7 @@ export default function App() {
             style={{ borderColor: 'var(--border)' }}
           >
             <LogOut className="w-4 h-4" />
-            Logout
+            Sign out
           </button>
         </div>
         <Routes>

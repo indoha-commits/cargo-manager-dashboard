@@ -8,11 +8,11 @@ interface SidebarProps {
 
 export function Sidebar({ currentPage, onPageChange, onLogout }: SidebarProps) {
   return (
-    <aside 
+    <aside
       className="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col"
-      style={{ 
+      style={{
         backgroundColor: 'var(--sidebar)',
-        borderRight: '1px solid var(--sidebar-border)'
+        borderRight: '1px solid var(--sidebar-border)',
       }}
     >
       <OpsSidebarContent currentPage={currentPage} onPageChange={onPageChange} onLogout={onLogout} />
