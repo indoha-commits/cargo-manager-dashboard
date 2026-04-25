@@ -1,8 +1,11 @@
 import {
   Activity,
   AlertTriangle,
+  Banknote,
+  FileSpreadsheet,
   GitBranch,
   LogOut,
+  Receipt,
   Radar,
   RefreshCw,
 } from 'lucide-react';
@@ -15,6 +18,24 @@ interface OpsSidebarContentProps {
 }
 
 const navItems = [
+  {
+    id: 'shipments',
+    label: 'Shipments',
+    description: 'Core system (BoL)',
+    icon: FileSpreadsheet,
+  },
+  {
+    id: 'payments',
+    label: 'Payments',
+    description: 'Cash control',
+    icon: Banknote,
+  },
+  {
+    id: 'receivables',
+    label: 'Receivables',
+    description: 'Outstanding risk',
+    icon: Receipt,
+  },
   {
     id: 'action-panel',
     label: 'Action Panel',

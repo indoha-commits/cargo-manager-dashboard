@@ -10,10 +10,23 @@ import { ActionPanelPage } from '@/app/components/pages/manager/ActionPanelPage'
 import { PipelinePage } from '@/app/components/pages/manager/PipelinePage';
 import { MonitoringPage } from '@/app/components/pages/manager/MonitoringPage';
 import { RiskCenterPage } from '@/app/components/pages/manager/RiskCenterPage';
+import { ShipmentsPage } from '@/app/components/pages/manager/ShipmentsPage';
+import { PaymentsPage } from '@/app/components/pages/manager/PaymentsPage';
+import { ReceivablesPage } from '@/app/components/pages/manager/ReceivablesPage';
 
-type ManagerPageId = 'action-panel' | 'pipeline' | 'monitoring' | 'risk-center';
+type ManagerPageId =
+  | 'shipments'
+  | 'payments'
+  | 'receivables'
+  | 'action-panel'
+  | 'pipeline'
+  | 'monitoring'
+  | 'risk-center';
 
 const pageToPath: Record<ManagerPageId, string> = {
+  shipments: 'shipments',
+  payments: 'payments',
+  receivables: 'receivables',
   'action-panel': 'action-panel',
   pipeline: 'pipeline',
   monitoring: 'monitoring',
@@ -21,6 +34,9 @@ const pageToPath: Record<ManagerPageId, string> = {
 };
 
 const pathToPage: Record<string, ManagerPageId> = {
+  shipments: 'shipments',
+  payments: 'payments',
+  receivables: 'receivables',
   'action-panel': 'action-panel',
   pipeline: 'pipeline',
   monitoring: 'monitoring',
@@ -59,6 +75,12 @@ function ManagerPageRenderer({
   currentPage: ManagerPageId;
 }) {
   switch (currentPage) {
+    case 'shipments':
+      return <ShipmentsPage />;
+    case 'payments':
+      return <PaymentsPage />;
+    case 'receivables':
+      return <ReceivablesPage />;
     case 'action-panel':
       return <ActionPanelPage />;
     case 'pipeline':
@@ -68,7 +90,7 @@ function ManagerPageRenderer({
     case 'risk-center':
       return <RiskCenterPage />;
     default:
-      return <ActionPanelPage />;
+      return <ShipmentsPage />;
   }
 }
 
@@ -189,12 +211,12 @@ export default function App() {
           </button>
         </div>
         <Routes>
-          <Route path="/" element={<Navigate to="/action-panel" replace />} />
+          <Route path="/" element={<Navigate to="/shipments" replace />} />
           <Route
             path="/:pageSlug"
             element={<ManagerPageRenderer key={currentPageMemo} currentPage={currentPageMemo} />}
           />
-          <Route path="*" element={<Navigate to="/action-panel" replace />} />
+          <Route path="*" element={<Navigate to="/shipments" replace />} />
         </Routes>
       </main>
     </div>

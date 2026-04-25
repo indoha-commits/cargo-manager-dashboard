@@ -83,6 +83,7 @@ export async function getOpsPendingDocuments(): Promise<OpsPendingDocumentsRespo
 
 export type OpsCargoRegistryResponse = {
   groups: Array<{
+    shipment_id?: string;
     bill_of_lading: string;
     client_id: string;
     client_name: string;
@@ -94,6 +95,13 @@ export type OpsCargoRegistryResponse = {
     vessel: string | null;
     expected_arrival_date: string | null;
     eta: string | null;
+    dmc?: string | null;
+    service_scope?: string | null;
+    price?: number | null;
+    revenue?: number | null;
+    cost?: number | null;
+    profit?: number | null;
+    due_payment_date?: string | null;
     created_at: string;
     updated_at: string;
     cargos: Array<{
@@ -108,6 +116,62 @@ export type OpsCargoRegistryResponse = {
 
 export async function getOpsCargoRegistry(): Promise<OpsCargoRegistryResponse> {
   return await fetchJson<OpsCargoRegistryResponse>('/ops/cargo-registry');
+}
+
+export type ManagerShipmentsRow = {
+  shipment_id: string;
+  shipment_ref: string;
+  client_id: string;
+  client_name: string;
+  date: string;
+  dmc: string | null;
+  service_scope: 'LOGISTICS_AND_CLEARING' | 'CLEARING_ONLY' | string;
+  price: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  status: string;
+  expected_arrival_date: string | null;
+  due_payment_date: string | null;
+  paid_amount: number;
+  outstanding_amount: number;
+};
+
+export async function getManagerShipments(): Promise<{ rows: ManagerShipmentsRow[] }> {
+  return await fetchJson<{ rows: ManagerShipmentsRow[] }>('/ops/manager/shipments');
+}
+
+export type ManagerReceivableRow = {
+  client_id: string;
+  client_name: string;
+  total_revenue: number;
+  paid: number;
+  outstanding: number;
+  oldest_due_date: string | null;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+};
+
+export async function getManagerReceivables(): Promise<{ rows: ManagerReceivableRow[] }> {
+  return await fetchJson<{ rows: ManagerReceivableRow[] }>('/ops/manager/receivables');
+}
+
+export type ManagerPaymentRow = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  cargo_group_id: string | null;
+  shipment_ref: string | null;
+  amount: number;
+  currency: string;
+  paid_at: string;
+  method: string;
+  reference: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export async function getManagerPayments(): Promise<{ rows: ManagerPaymentRow[] }> {
+  return await fetchJson<{ rows: ManagerPaymentRow[] }>('/ops/manager/payments');
 }
 
 export type OpsCargoTimelineResponse = {
