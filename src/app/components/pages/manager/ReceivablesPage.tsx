@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Search, X } from 'lucide-react';
-import { getManagerReceivables, type ManagerReceivableRow } from '@/app/api/ops';
+import { AlertTriangle, CalendarClock, RefreshCw, Search, X } from 'lucide-react';
+import { getBillingCycles, getManagerReceivables, type BillingCycleRow, type ManagerReceivableRow } from '@/app/api/ops';
 
 function money(n: number) {
   const v = Number.isFinite(n) ? n : 0;
@@ -14,22 +14,70 @@ function riskBadge(level: string) {
   return { label: 'LOW', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' };
 }
 
+function daysUntil(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr);
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+}
+
+function BillingCycleChip({ cycle }: { cycle: BillingCycleRow }) {
+  const days = daysUntil(cycle.next_billing_date);
+  const overdue = days < 0;
+  const soon = days <= 3;
+
+  return (
+    <div
+      className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border"
+      style={{
+        borderColor: overdue ? 'var(--destructive)' : soon ? '#f59e0b' : 'var(--border)',
+        backgroundColor: overdue
+          ? 'color-mix(in srgb, var(--destructive) 8%, transparent)'
+          : soon
+            ? 'color-mix(in srgb, #f59e0b 8%, transparent)'
+            : 'var(--muted)',
+        color: overdue ? 'var(--destructive)' : soon ? '#92400e' : undefined,
+      }}
+    >
+      <CalendarClock className="size-3 shrink-0" />
+      <span className="font-medium">{cycle.next_billing_date}</span>
+      <span className="opacity-60">·</span>
+      <span className="opacity-70">{money(cycle.price_per_dmc)} RWF/DMC</span>
+      {overdue && <span className="font-bold text-xs">(OVERDUE)</span>}
+      {!overdue && days <= 7 && <span className="opacity-70">{days}d left</span>}
+    </div>
+  );
+}
+
 export function ReceivablesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ManagerReceivableRow[]>([]);
+  const [cycles, setCycles] = useState<BillingCycleRow[]>([]);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  function reload() {
     setLoading(true);
     setError(null);
-    getManagerReceivables()
-      .then((r) => { if (!cancelled) setRows(r.rows ?? []); })
-      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+    Promise.all([getManagerReceivables(), getBillingCycles()])
+      .then(([recv, cyc]) => {
+        setRows(recv.rows ?? []);
+        setCycles(cyc.cycles ?? []);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { reload(); }, []);
+
+  // Index active (pending) cycles by client_id
+  const activeCycleByClient = useMemo(() => {
+    const map = new Map<string, BillingCycleRow>();
+    for (const c of cycles) {
+      if (c.status === 'pending') map.set(c.client_id, c);
+    }
+    return map;
+  }, [cycles]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -44,28 +92,60 @@ export function ReceivablesPage() {
     return { totalRevenue, paid, outstanding };
   }, [filtered]);
 
+  const pendingCyclesCount = useMemo(
+    () => cycles.filter((c) => c.status === 'pending').length,
+    [cycles],
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Receivables</h1>
-        <p className="text-sm text-muted-foreground mt-1">Daily control dashboard (who owes you, how much, how risky)</p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Receivables</h1>
+          <p className="text-sm text-muted-foreground mt-1">Daily control — who owes you, how much, next billing date</p>
+        </div>
+        <button
+          type="button"
+          onClick={reload}
+          disabled={loading}
+          className="shrink-0 p-2 rounded-lg border hover:bg-muted transition-colors disabled:opacity-40"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* KPI bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
           <div className="text-xs text-muted-foreground">Total revenue</div>
           <div className="text-xl font-bold tabular-nums">{money(totals.totalRevenue)}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">RWF</div>
         </div>
         <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
           <div className="text-xs text-muted-foreground">Paid</div>
-          <div className="text-xl font-bold tabular-nums">{money(totals.paid)}</div>
+          <div className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{money(totals.paid)}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">RWF</div>
         </div>
         <div className="bg-card border border-red-500/20 rounded-xl px-4 py-3">
           <div className="text-xs text-muted-foreground">Outstanding</div>
           <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{money(totals.outstanding)}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">RWF</div>
+        </div>
+        <div
+          className="bg-card border rounded-xl px-4 py-3"
+          style={{ borderColor: pendingCyclesCount > 0 ? '#f59e0b' : 'var(--border)' }}
+        >
+          <div className="text-xs text-muted-foreground">Active billing cycles</div>
+          <div className={`text-xl font-bold tabular-nums ${pendingCyclesCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+            {pendingCyclesCount}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">pending</div>
         </div>
       </div>
 
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <input
@@ -82,9 +162,10 @@ export function ReceivablesPage() {
         )}
       </div>
 
+      {/* Table */}
       {loading ? (
         <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-14 bg-card border rounded-xl animate-pulse" />)}
+          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-16 bg-card border rounded-xl animate-pulse" />)}
         </div>
       ) : error ? (
         <div className="text-sm text-destructive">{error}</div>
@@ -93,28 +174,46 @@ export function ReceivablesPage() {
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="px-5 py-3">Client</th>
-                  <th className="px-5 py-3">Total revenue</th>
-                  <th className="px-5 py-3">Paid</th>
-                  <th className="px-5 py-3">Outstanding</th>
-                  <th className="px-5 py-3">Oldest invoice</th>
-                  <th className="px-5 py-3">Risk</th>
+                <tr
+                  className="text-left text-xs text-muted-foreground"
+                  style={{ backgroundColor: 'var(--muted)' }}
+                >
+                  <th className="px-5 py-3 font-semibold">Client</th>
+                  <th className="px-5 py-3 font-semibold text-right">Total Revenue</th>
+                  <th className="px-5 py-3 font-semibold text-right">Paid</th>
+                  <th className="px-5 py-3 font-semibold text-right">Outstanding</th>
+                  <th className="px-5 py-3 font-semibold">Oldest Invoice</th>
+                  <th className="px-5 py-3 font-semibold">Next Billing Cycle</th>
+                  <th className="px-5 py-3 font-semibold">Risk</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((r) => {
                   const badge = riskBadge(r.risk_level);
+                  const cycle = activeCycleByClient.get(r.client_id);
                   return (
-                    <tr key={r.client_id} className="border-t" style={{ borderColor: 'var(--border)' }}>
-                      <td className="px-5 py-3 font-medium">{r.client_name}</td>
-                      <td className="px-5 py-3 tabular-nums">{money(Number(r.total_revenue || 0))}</td>
-                      <td className="px-5 py-3 tabular-nums">{money(Number(r.paid || 0))}</td>
-                      <td className="px-5 py-3 tabular-nums font-semibold text-red-600 dark:text-red-400">
+                    <tr
+                      key={r.client_id}
+                      className="border-t hover:bg-muted/40 transition-colors"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <td className="px-5 py-3">
+                        <span className="font-medium">{r.client_name}</span>
+                      </td>
+                      <td className="px-5 py-3 tabular-nums text-right">{money(Number(r.total_revenue || 0))}</td>
+                      <td className="px-5 py-3 tabular-nums text-right text-emerald-600 dark:text-emerald-400">
+                        {money(Number(r.paid || 0))}
+                      </td>
+                      <td className="px-5 py-3 tabular-nums font-semibold text-right text-red-600 dark:text-red-400">
                         {money(Number(r.outstanding || 0))}
                       </td>
-                      <td className="px-5 py-3 text-xs text-muted-foreground">
-                        {r.oldest_due_date ?? '—'}
+                      <td className="px-5 py-3 text-xs text-muted-foreground">{r.oldest_due_date ?? '—'}</td>
+                      <td className="px-5 py-3">
+                        {cycle ? (
+                          <BillingCycleChip cycle={cycle} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No active cycle</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold ${badge.className}`}>
@@ -133,4 +232,3 @@ export function ReceivablesPage() {
     </div>
   );
 }
-

@@ -160,18 +160,74 @@ export type ManagerPaymentRow = {
   client_id: string;
   client_name: string;
   cargo_group_id: string | null;
+  invoice_number: string | null;
   shipment_ref: string | null;
+  dmc: string | null;
+  line_items: InvoiceLineItem[] | null;
   amount: number;
   currency: string;
   paid_at: string;
+  next_billing_date: string | null;
   method: string;
   reference: string | null;
   notes: string | null;
+  email_sent: boolean;
   created_at: string;
+};
+
+export type InvoiceLineItem = {
+  description: string;
+  unit?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+};
+
+export type CreatePaymentPayload = {
+  client_id: string;
+  cargo_group_id?: string;
+  invoice_number?: string;
+  shipment_ref?: string;
+  dmc?: string;
+  line_items?: InvoiceLineItem[];
+  amount: number;
+  currency?: string;
+  paid_at?: string;
+  next_billing_date?: string;
+  method?: string;
+  reference?: string;
+  notes?: string;
 };
 
 export async function getManagerPayments(): Promise<{ rows: ManagerPaymentRow[] }> {
   return await fetchJson<{ rows: ManagerPaymentRow[] }>('/ops/manager/payments');
+}
+
+export type BillingCycleRow = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  client_tin: string | null;
+  cycle_start_date: string;
+  next_billing_date: string;
+  price_per_dmc: number;
+  status: 'pending' | 'billed' | 'cancelled';
+  billed_at: string | null;
+  billed_container_count: number | null;
+  billed_invoice_amount: number | null;
+};
+
+export async function getBillingCycles(): Promise<{ cycles: BillingCycleRow[] }> {
+  return await fetchJson<{ cycles: BillingCycleRow[] }>('/ops/manager/billing-cycles');
+}
+
+export async function createManagerPayment(
+  payload: CreatePaymentPayload
+): Promise<{ payment: ManagerPaymentRow; email_sent: boolean }> {
+  return await fetchJson('/ops/manager/payments/create', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export type OpsCargoTimelineResponse = {

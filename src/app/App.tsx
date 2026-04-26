@@ -156,8 +156,7 @@ export default function App() {
           <Menu className="w-5 h-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight">Manager Dashboard</div>
-          <div className="text-xs opacity-50 truncate leading-tight">Operations cockpit</div>
+          <img src="/indataflow-logo.png" alt="InDataFlow" className="h-7 w-auto brightness-0 dark:invert" />
         </div>
         <button
           type="button"
