@@ -222,6 +222,21 @@ export async function getBillingCycles(): Promise<{ cycles: BillingCycleRow[] }>
   return await fetchJson<{ cycles: BillingCycleRow[] }>('/ops/manager/billing-cycles');
 }
 
+export async function openInvoiceWindow(paymentId: string): Promise<void> {
+  // Fetches the printable invoice HTML (with auth headers) and opens it in a new tab.
+  const { getBaseUrl, getAuthHeader } = await import('./client');
+  const url = `${getBaseUrl()}/ops/manager/payments/${encodeURIComponent(paymentId)}/invoice`;
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) throw new Error(`invoice_fetch_failed:${res.status}`);
+  const html = await res.text();
+  const blob = new Blob([html], { type: 'text/html' });
+  const objectUrl = URL.createObjectURL(blob);
+  const win = window.open(objectUrl, '_blank');
+  // Revoke after a short delay so the tab has time to load
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+  if (!win) throw new Error('popup_blocked');
+}
+
 export async function sendPaymentInvoice(
   paymentId: string,
   email: string,

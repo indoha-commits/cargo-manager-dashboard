@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   CreditCard,
+  Download,
   Loader2,
   Mail,
   Minus,
@@ -13,6 +14,7 @@ import {
 import {
   createManagerPayment,
   getManagerPayments,
+  openInvoiceWindow,
   sendPaymentInvoice,
   type CreatePaymentPayload,
   type InvoiceLineItem,
@@ -440,6 +442,18 @@ export function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sendInvoiceFor, setSendInvoiceFor] = useState<ManagerPaymentRow | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownload(r: ManagerPaymentRow) {
+    setDownloadingId(r.id);
+    try {
+      await openInvoiceWindow(r.id);
+    } catch (_e) {
+      // silent — popup blocked or network error
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   function reload() {
     setLoading(true);
@@ -529,7 +543,8 @@ export function PaymentsPage() {
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 font-semibold">Next Billing</th>
                   <th className="px-5 py-3 font-semibold">Method</th>
-                  <th className="px-5 py-3 font-semibold text-center">Invoice</th>
+                  <th className="px-4 py-3 font-semibold text-center">Email</th>
+                  <th className="px-4 py-3 font-semibold text-center">PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -545,7 +560,8 @@ export function PaymentsPage() {
                     <td className="px-5 py-3">
                       <span className="text-xs bg-muted rounded px-2 py-0.5">{fmtMethod(r.method)}</span>
                     </td>
-                    <td className="px-5 py-3 text-center">
+                    {/* Email send */}
+                    <td className="px-4 py-3 text-center">
                       {r.email_sent ? (
                         <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                           <Check className="size-3" /> Sent
@@ -561,6 +577,22 @@ export function PaymentsPage() {
                           <Mail className="size-3" /> Send
                         </button>
                       )}
+                    </td>
+                    {/* Download */}
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(r)}
+                        disabled={downloadingId === r.id}
+                        title="Download / print invoice"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border hover:bg-muted transition-colors disabled:opacity-40"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        {downloadingId === r.id
+                          ? <Loader2 className="size-3 animate-spin" />
+                          : <Download className="size-3" />}
+                        PDF
+                      </button>
                     </td>
                   </tr>
                 ))}
