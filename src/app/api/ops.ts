@@ -159,6 +159,7 @@ export type ManagerPaymentRow = {
   id: string;
   client_id: string;
   client_name: string;
+  client_billing_email: string | null;
   cargo_group_id: string | null;
   invoice_number: string | null;
   shipment_ref: string | null;
@@ -219,6 +220,17 @@ export type BillingCycleRow = {
 
 export async function getBillingCycles(): Promise<{ cycles: BillingCycleRow[] }> {
   return await fetchJson<{ cycles: BillingCycleRow[] }>('/ops/manager/billing-cycles');
+}
+
+export async function sendPaymentInvoice(
+  paymentId: string,
+  email: string,
+  saveEmail: boolean
+): Promise<{ ok: true; email_sent_to: string; billing_email_saved: boolean }> {
+  return await fetchJson(`/ops/manager/payments/${encodeURIComponent(paymentId)}/send-invoice`, {
+    method: 'POST',
+    body: JSON.stringify({ email, save_email: saveEmail }),
+  });
 }
 
 export async function createManagerPayment(
