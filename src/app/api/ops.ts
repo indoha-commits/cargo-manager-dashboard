@@ -240,11 +240,12 @@ export async function openInvoiceWindow(paymentId: string): Promise<void> {
 export async function sendPaymentInvoice(
   paymentId: string,
   email: string,
-  saveEmail: boolean
+  saveEmail: boolean,
+  reportCsvB64?: string,
 ): Promise<{ ok: true; email_sent_to: string; billing_email_saved: boolean }> {
   return await fetchJson(`/ops/manager/payments/${encodeURIComponent(paymentId)}/send-invoice`, {
     method: 'POST',
-    body: JSON.stringify({ email, save_email: saveEmail }),
+    body: JSON.stringify({ email, save_email: saveEmail, report_csv_b64: reportCsvB64 || undefined }),
   });
 }
 

@@ -7,12 +7,14 @@ import {
   Loader2,
   Mail,
   Minus,
+  Paperclip,
   Plus,
   Search,
   Send,
   X,
 } from 'lucide-react';
 import { GenerateReportDialog } from './GenerateReportDialog';
+import { parsePsAsciiText, parsePsFile, generateReportCsv } from '@/app/lib/psReportParser';
 import {
   createManagerPayment,
   getManagerPayments,
@@ -55,6 +57,9 @@ function SendInvoiceDialog({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Retrieve any report CSV that was generated in the New Payment form
+  const reportCsvB64 = sessionStorage.getItem(`report_for_payment_${payment.id}`) ?? undefined;
+
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
@@ -66,7 +71,8 @@ function SendInvoiceDialog({
     setSending(true);
     setError(null);
     try {
-      await sendPaymentInvoice(payment.id, trimmed, saveEmail);
+      await sendPaymentInvoice(payment.id, trimmed, saveEmail, reportCsvB64);
+      sessionStorage.removeItem(`report_for_payment_${payment.id}`);
       setDone(true);
       onSent(payment.id);
       setTimeout(onClose, 1800);
@@ -136,6 +142,13 @@ function SendInvoiceDialog({
               </span>
             </label>
 
+            {reportCsvB64 && (
+              <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                <Paperclip className="size-3.5 shrink-0" />
+                Excel report will be attached to this email
+              </div>
+            )}
+
             {error && (
               <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
             )}
@@ -198,6 +211,15 @@ function NewPaymentDrawer({
     { description: '', unit: '1', quantity: 1, unit_price: 0, total_price: 0 },
   ]);
 
+  // Report attachment
+  const [attachReport, setAttachReport] = useState(false);
+  const [reportPricePerDmc, setReportPricePerDmc] = useState('118000');
+  const [reportStatus, setReportStatus] = useState<'idle' | 'reading' | 'ready' | 'error'>('idle');
+  const [reportCsvB64, setReportCsvB64] = useState<string | null>(null);
+  const [reportFileName, setReportFileName] = useState('');
+  const [reportError, setReportError] = useState<string | null>(null);
+  const reportFileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!open) return;
     setLoadingClients(true);
@@ -231,6 +253,48 @@ function NewPaymentDrawer({
     setNextBillingDate(''); setReference(''); setNotes('');
     setLineItems([{ description: '', unit: '1', quantity: 1, unit_price: 0, total_price: 0 }]);
     setError(null); setSavedOk(false);
+    setAttachReport(false); setReportCsvB64(null); setReportFileName('');
+    setReportStatus('idle'); setReportError(null);
+  }
+
+  async function handleReportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReportFileName(file.name);
+    setReportStatus('reading');
+    setReportError(null);
+    setReportCsvB64(null);
+    try {
+      const text = await file.text();
+      let result;
+      if (file.name.toLowerCase().endsWith('.ps')) {
+        const psResult = parsePsFile(text);
+        if (psResult.isBitmapPs) {
+          setReportError('This .ps file uses bitmap text. Please convert it with ps2ascii first, then upload the .txt file.');
+          setReportStatus('error');
+          return;
+        }
+        result = parsePsAsciiText(text, reportPricePerDmc);
+      } else {
+        result = parsePsAsciiText(text, reportPricePerDmc);
+      }
+      if (!result.rows.length) {
+        setReportError('No data rows found. Make sure the file is a ps2ascii output.');
+        setReportStatus('error');
+        return;
+      }
+      const csv = generateReportCsv(result);
+      // encode to base64
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(csv);
+      let binary = '';
+      bytes.forEach((b) => { binary += String.fromCharCode(b); });
+      setReportCsvB64(btoa(binary));
+      setReportStatus('ready');
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : String(err));
+      setReportStatus('error');
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -255,6 +319,10 @@ function NewPaymentDrawer({
         notes: notes || undefined,
       };
       const res = await createManagerPayment(payload);
+      // Bridge report CSV to the Send Invoice dialog via sessionStorage
+      if (attachReport && reportCsvB64 && res.payment?.id) {
+        sessionStorage.setItem(`report_for_payment_${res.payment.id}`, reportCsvB64);
+      }
       setSavedOk(true);
       onSaved(res.payment);
       setTimeout(() => { setSavedOk(false); handleReset(); onClose(); }, 1800);
@@ -396,6 +464,67 @@ function NewPaymentDrawer({
                   <span />
                 </div>
               </div>
+            </div>
+
+            {/* Attach Excel Report */}
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+              <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-muted/40 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={attachReport}
+                  onChange={(e) => {
+                    setAttachReport(e.target.checked);
+                    if (!e.target.checked) { setReportCsvB64(null); setReportFileName(''); setReportStatus('idle'); setReportError(null); }
+                  }}
+                  className="rounded"
+                />
+                <Paperclip className="size-4 text-muted-foreground" />
+                <div>
+                  <span className="text-sm font-medium">Attach Excel Report</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Generate & attach a customs report CSV to the invoice email</p>
+                </div>
+              </label>
+
+              {attachReport && (
+                <div className="border-t px-4 pb-4 pt-3 space-y-3" style={{ borderColor: 'var(--border)' }}>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Price per DMC</label>
+                    <select
+                      value={reportPricePerDmc}
+                      onChange={(e) => { setReportPricePerDmc(e.target.value); setReportStatus('idle'); setReportCsvB64(null); }}
+                      className="w-full rounded-lg border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <option value="118000">118,000 RWF</option>
+                      <option value="142600">142,600 RWF</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Upload PS / TXT file</label>
+                    <input
+                      ref={reportFileRef}
+                      type="file"
+                      accept=".ps,.txt"
+                      onChange={handleReportFile}
+                      className="block w-full text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:text-xs file:font-medium file:cursor-pointer cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1 opacity-70">Convert .ps → .txt first with: <code className="font-mono">ps2ascii report.ps report.txt</code></p>
+                  </div>
+                  {reportStatus === 'reading' && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" /> Parsing…
+                    </div>
+                  )}
+                  {reportStatus === 'ready' && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      <Check className="size-3.5" /> Report ready — <span className="font-mono opacity-70">{reportFileName}</span> will be attached
+                    </div>
+                  )}
+                  {reportStatus === 'error' && (
+                    <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{reportError}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Reference + notes */}
