@@ -6,127 +6,114 @@ import {
   CheckCircle2,
   Clock,
   Package,
+  Ship,
   PackageCheck,
-  ShieldAlert,
   Truck,
   Activity,
   TrendingUp,
+  Anchor,
+  Container,
+  MapPin,
 } from 'lucide-react';
-import { useManagerData } from './data';
-import { eventTypeLabel, formatRelativeTime } from './data';
+import { useManagerData, SUCOMO_STAGES, toSucomoStage, eventTypeLabel, formatRelativeTime } from './data';
 import { Button } from '@/app/components/ui/button';
 
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-  accent,
-  onClick,
-  actionLabel,
-  disabled,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  sub?: string;
-  accent: 'red' | 'amber' | 'blue' | 'green';
-  onClick?: () => void;
-  actionLabel?: string;
-  disabled?: boolean;
-}) {
-  const accentMap = {
-    red: {
-      border: 'border-red-500/30',
-      iconBg: 'bg-red-500/10',
-      iconColor: 'text-red-500',
-      actionClass: 'bg-red-500 hover:bg-red-600 text-white',
-      valueColor: 'text-red-600 dark:text-red-400',
-    },
-    amber: {
-      border: 'border-amber-500/30',
-      iconBg: 'bg-amber-500/10',
-      iconColor: 'text-amber-500',
-      actionClass: 'bg-amber-500 hover:bg-amber-600 text-white',
-      valueColor: 'text-amber-600 dark:text-amber-400',
-    },
-    blue: {
-      border: 'border-sky-500/30',
-      iconBg: 'bg-sky-500/10',
-      iconColor: 'text-sky-500',
-      actionClass: 'bg-sky-500 hover:bg-sky-600 text-white',
-      valueColor: 'text-sky-600 dark:text-sky-400',
-    },
-    green: {
-      border: 'border-emerald-500/30',
-      iconBg: 'bg-emerald-500/10',
-      iconColor: 'text-emerald-500',
-      actionClass: 'bg-emerald-500 hover:bg-emerald-600 text-white',
-      valueColor: 'text-emerald-600 dark:text-emerald-400',
-    },
-  };
-  const colors = accentMap[accent];
+// ── SUCOMO milestone colours ───────────────────────────────────────────────────
+const STAGE_COLORS: Record<string, { bar: string; badge: string; text: string; dot: string }> = {
+  VESSEL_ARRIVAL_AWAITED: {
+    bar:   'bg-slate-400',
+    badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    text:  'text-slate-600 dark:text-slate-400',
+    dot:   'bg-slate-400',
+  },
+  AWAIT_DISCHARGE: {
+    bar:   'bg-blue-400',
+    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    text:  'text-blue-600 dark:text-blue-400',
+    dot:   'bg-blue-400',
+  },
+  SCT_LOADING_AWAITED: {
+    bar:   'bg-violet-400',
+    badge: 'bg-violet-50 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
+    text:  'text-violet-600 dark:text-violet-400',
+    dot:   'bg-violet-400',
+  },
+  UNDER_ICD_TRANSFER: {
+    bar:   'bg-amber-400',
+    badge: 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    text:  'text-amber-600 dark:text-amber-400',
+    dot:   'bg-amber-400',
+  },
+  UNDER_PORT_CLEARANCE: {
+    bar:   'bg-orange-400',
+    badge: 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+    text:  'text-orange-600 dark:text-orange-400',
+    dot:   'bg-orange-400',
+  },
+  LOADED_ON_WAY: {
+    bar:   'bg-sky-400',
+    badge: 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+    text:  'text-sky-600 dark:text-sky-400',
+    dot:   'bg-sky-400',
+  },
+  ARRIVED_AT_CONSIGNEE: {
+    bar:   'bg-emerald-400',
+    badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    text:  'text-emerald-600 dark:text-emerald-400',
+    dot:   'bg-emerald-400',
+  },
+};
 
-  return (
-    <div
-      className={`bg-card border rounded-xl p-5 flex flex-col gap-4 ${colors.border}`}
-      style={{ borderColor: undefined }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colors.iconBg}`}>
-          <span className={colors.iconColor}>{icon}</span>
-        </div>
-        <div className={`text-3xl font-bold tabular-nums ${colors.valueColor}`}>
-          {value}
-        </div>
-      </div>
-      <div>
-        <div className="font-semibold text-sm">{label}</div>
-        {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
-      </div>
-      {actionLabel && onClick && (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onClick}
-          className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed ${colors.actionClass}`}
-        >
-          {actionLabel}
-          <ArrowRight className="size-3" />
-        </button>
-      )}
-    </div>
-  );
-}
+const STAGE_ICONS: Record<string, React.ReactNode> = {
+  VESSEL_ARRIVAL_AWAITED: <Anchor className="size-3.5" />,
+  AWAIT_DISCHARGE:        <Ship className="size-3.5" />,
+  SCT_LOADING_AWAITED:    <Container className="size-3.5" />,
+  UNDER_ICD_TRANSFER:     <Activity className="size-3.5" />,
+  UNDER_PORT_CLEARANCE:   <PackageCheck className="size-3.5" />,
+  LOADED_ON_WAY:          <Truck className="size-3.5" />,
+  ARRIVED_AT_CONSIGNEE:   <MapPin className="size-3.5" />,
+};
 
 export function ActionPanelPage() {
   const { loading, error, rows } = useManagerData();
   const navigate = useNavigate();
 
-  const released = useMemo(() => rows.filter((r) => r.pipeline_state === 'ready_dispatch'), [rows]);
-  const releasingTomorrow = useMemo(() => rows.filter((r) => r.days_to_release === 1), [rows]);
-  const releasingSoon = useMemo(() => rows.filter((r) => r.pipeline_state === 'releasing_soon'), [rows]);
-  const delayedVerification = useMemo(() => rows.filter((r) => r.verification_status === 'failed'), [rows]);
-  const inTransit = useMemo(() => rows.filter((r) => r.pipeline_state === 'in_transit'), [rows]);
-  const totalActive = rows.length;
-
-  // Recent activity feed: containers with latest events, sorted by time
-  const recentActivity = useMemo(() => {
-    return [...rows]
-      .filter((r) => r.latest_event_time)
-      .sort((a, b) => Date.parse(b.latest_event_time!) - Date.parse(a.latest_event_time!))
-      .slice(0, 6);
+  // Count containers per SUCOMO stage
+  const sucomo = useMemo(() => {
+    const counts = new Map<string, number>(SUCOMO_STAGES.map((s) => [s.id, 0]));
+    for (const r of rows) {
+      const stage = toSucomoStage(r.latest_event_type);
+      counts.set(stage, (counts.get(stage) ?? 0) + 1);
+    }
+    return SUCOMO_STAGES.map((s) => ({ ...s, count: counts.get(s.id) ?? 0 }));
   }, [rows]);
 
+  const total = rows.length;
+  const maxCount = useMemo(() => Math.max(...sucomo.map((s) => s.count), 1), [sucomo]);
+
+  // KPI counts derived from SUCOMO stages
+  const arrivedCount   = useMemo(() => sucomo.find((s) => s.id === 'ARRIVED_AT_CONSIGNEE')?.count ?? 0, [sucomo]);
+  const loadedCount    = useMemo(() => sucomo.find((s) => s.id === 'LOADED_ON_WAY')?.count ?? 0, [sucomo]);
+  const clearanceCount = useMemo(() => sucomo.find((s) => s.id === 'UNDER_PORT_CLEARANCE')?.count ?? 0, [sucomo]);
+  const atSeaCount     = useMemo(() => (sucomo.find((s) => s.id === 'VESSEL_ARRIVAL_AWAITED')?.count ?? 0)
+    + (sucomo.find((s) => s.id === 'AWAIT_DISCHARGE')?.count ?? 0), [sucomo]);
+
   const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  // Recent activity feed
+  const recentActivity = useMemo(() =>
+    [...rows]
+      .filter((r) => r.latest_event_time)
+      .sort((a, b) => Date.parse(b.latest_event_time!) - Date.parse(a.latest_event_time!))
+      .slice(0, 6),
+    [rows]
+  );
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
+
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -139,103 +126,214 @@ export function ActionPanelPage() {
         </Button>
       </div>
 
-      {/* Alert banner */}
-      {!loading && !error && released.length > 0 && (
+      {/* Alert banner — arrived containers need truck assignment */}
+      {!loading && !error && arrivedCount > 0 && (
         <div
-          className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/5 px-5 py-3.5"
+          className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-3.5"
           role="alert"
         >
-          <AlertTriangle className="size-5 text-red-500 shrink-0" />
+          <AlertTriangle className="size-5 text-emerald-600 shrink-0" />
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-semibold text-red-700 dark:text-red-400">
-              {released.length} container{released.length > 1 ? 's' : ''} ready to dispatch
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              {arrivedCount} container{arrivedCount > 1 ? 's' : ''} arrived at consignee
             </span>
-            <span className="text-sm text-muted-foreground ml-2">— assign trucks now to avoid delays.</span>
+            <span className="text-sm text-muted-foreground ml-2">— confirm delivery and close file.</span>
           </div>
           <button
             type="button"
-            onClick={() => navigate('/pipeline?stage=ready_dispatch')}
-            className="shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+            onClick={() => navigate('/pipeline')}
+            className="shrink-0 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
           >
-            View
+            View <ArrowRight className="size-3 inline" />
           </button>
         </div>
       )}
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-card border rounded-xl p-5 h-36 animate-pulse" />
-          ))
-        ) : error ? (
-          <div className="col-span-4 text-sm text-destructive">{error}</div>
-        ) : (
-          <>
-            <StatCard
-              icon={<Truck className="size-5" />}
-              label="Ready to dispatch"
-              value={released.length}
-              sub="Awaiting truck assignment"
-              accent="red"
-              actionLabel="Assign trucks"
-              onClick={() => navigate('/pipeline?stage=ready_dispatch')}
-              disabled={released.length === 0}
-            />
-            <StatCard
-              icon={<PackageCheck className="size-5" />}
-              label="Releasing tomorrow"
-              value={releasingTomorrow.length}
-              sub="Pre-assign now to avoid gaps"
-              accent="amber"
-              actionLabel="Pre-assign"
-              onClick={() => navigate('/pipeline?stage=releasing_soon')}
-              disabled={releasingTomorrow.length === 0}
-            />
-            <StatCard
-              icon={<Activity className="size-5" />}
-              label="In transit"
-              value={inTransit.length}
-              sub="Containers en route"
-              accent="blue"
-              actionLabel="Monitor"
-              onClick={() => navigate('/monitoring')}
-              disabled={inTransit.length === 0}
-            />
-            <StatCard
-              icon={<ShieldAlert className="size-5" />}
-              label="Validation issues"
-              value={delayedVerification.length}
-              sub="Failed or blocked documents"
-              accent="green"
-              actionLabel="Review"
-              onClick={() => navigate('/risk-center')}
-              disabled={delayedVerification.length === 0}
-            />
-          </>
-        )}
+      {/* ── SUCOMO Panel ──────────────────────────────────────────────────────── */}
+      <div className="bg-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+        {/* Header */}
+        <div className="px-5 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              <span className="text-sm font-bold tracking-wide uppercase text-foreground">
+                SUCOMO — Summarized Container Movement
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Live stage distribution across all active containers</p>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-3xl font-black tabular-nums leading-none">
+              {loading ? '—' : total}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">total containers</div>
+          </div>
+        </div>
+
+        {/* Stage rows */}
+        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          {loading ? (
+            Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="px-5 py-3.5 flex items-center gap-4">
+                <div className="w-5 h-5 rounded bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 h-3 rounded bg-muted animate-pulse" />
+                <div className="w-8 h-5 rounded bg-muted animate-pulse shrink-0" />
+              </div>
+            ))
+          ) : error ? (
+            <div className="px-5 py-6 text-sm text-destructive">{error}</div>
+          ) : (
+            // Rendered highest score first (score 7 → 1, matching the SUCOMO chart)
+            [...sucomo].sort((a, b) => b.score - a.score).map((stage) => {
+              const colors = STAGE_COLORS[stage.id];
+              const pct = total === 0 ? 0 : Math.round((stage.count / total) * 100);
+              const barWidth = total === 0 ? 0 : Math.round((stage.count / maxCount) * 100);
+
+              return (
+                <div
+                  key={stage.id}
+                  className="px-5 py-3 flex items-center gap-3 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  onClick={() => navigate('/pipeline')}
+                >
+                  {/* Score badge */}
+                  <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 text-[10px] font-black text-muted-foreground group-hover:bg-background transition-colors">
+                    {stage.score}
+                  </div>
+
+                  {/* Icon */}
+                  <div className={`shrink-0 ${colors.text}`}>
+                    {STAGE_ICONS[stage.id]}
+                  </div>
+
+                  {/* Label + bar */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-semibold truncate">{stage.label}</span>
+                      <span className={`text-xs font-bold tabular-nums shrink-0 ${stage.count > 0 ? colors.text : 'text-muted-foreground'}`}>
+                        {stage.count}
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* % label */}
+                  <div className="text-xs text-muted-foreground tabular-nums w-9 text-right shrink-0">
+                    {pct}%
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* Summary row */}
-      {!loading && !error && (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {[
-            { label: 'Total active', value: totalActive },
-            { label: 'Ready dispatch', value: released.length },
-            { label: 'Releasing ≤2d', value: releasingSoon.length },
-            { label: 'In transit', value: inTransit.length },
-            { label: 'Awaiting docs', value: rows.filter((r) => r.verification_status === 'pending_upload').length },
-            { label: 'Validated', value: rows.filter((r) => r.verification_status === 'validated').length },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-muted/40 rounded-lg px-3 py-2.5 text-center">
-              <div className="text-lg font-bold tabular-nums">{value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{label}</div>
+      {/* ── KPI cards ──────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            icon: <MapPin className="size-5" />,
+            label: 'Arrived at consignee',
+            sub: 'Confirm delivery & close file',
+            value: arrivedCount,
+            accent: 'emerald' as const,
+            action: 'Confirm deliveries',
+            route: '/pipeline',
+          },
+          {
+            icon: <Truck className="size-5" />,
+            label: 'Loaded & on way',
+            sub: 'Containers in final leg',
+            value: loadedCount,
+            accent: 'sky' as const,
+            action: 'Monitor',
+            route: '/monitoring',
+          },
+          {
+            icon: <PackageCheck className="size-5" />,
+            label: 'Under port clearance',
+            sub: 'Customs & documentation',
+            value: clearanceCount,
+            accent: 'orange' as const,
+            action: 'Check docs',
+            route: '/risk-center',
+          },
+          {
+            icon: <Ship className="size-5" />,
+            label: 'At sea / awaiting',
+            sub: 'Vessel arrival + discharge',
+            value: atSeaCount,
+            accent: 'slate' as const,
+            action: 'View ETA',
+            route: '/pipeline',
+          },
+        ].map(({ icon, label, sub, value, accent, action, route }) => {
+          const colorMap = {
+            emerald: { border: 'border-emerald-500/30', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-500', val: 'text-emerald-600 dark:text-emerald-400', btn: 'bg-emerald-500 hover:bg-emerald-600 text-white' },
+            sky:     { border: 'border-sky-500/30',     iconBg: 'bg-sky-500/10',     iconColor: 'text-sky-500',     val: 'text-sky-600 dark:text-sky-400',         btn: 'bg-sky-500 hover:bg-sky-600 text-white' },
+            orange:  { border: 'border-orange-500/30',  iconBg: 'bg-orange-500/10',  iconColor: 'text-orange-500',  val: 'text-orange-600 dark:text-orange-400',   btn: 'bg-orange-500 hover:bg-orange-600 text-white' },
+            slate:   { border: 'border-slate-500/30',   iconBg: 'bg-slate-500/10',   iconColor: 'text-slate-500',   val: 'text-slate-600 dark:text-slate-400',     btn: 'bg-slate-500 hover:bg-slate-600 text-white' },
+          };
+          const c = colorMap[accent];
+          return (
+            <div key={label} className={`bg-card border rounded-xl p-5 flex flex-col gap-3 ${c.border}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${c.iconBg}`}>
+                  <span className={c.iconColor}>{icon}</span>
+                </div>
+                <div className={`text-3xl font-bold tabular-nums ${c.val}`}>{loading ? '—' : value}</div>
+              </div>
+              <div>
+                <div className="font-semibold text-sm leading-snug">{label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
+              </div>
+              <button
+                type="button"
+                disabled={loading || value === 0}
+                onClick={() => navigate(route)}
+                className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed ${c.btn}`}
+              >
+                {action} <ArrowRight className="size-3" />
+              </button>
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* ── Quick stats strip ──────────────────────────────────────────────────── */}
+      {!loading && !error && (
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+          {sucomo.map((stage) => {
+            const colors = STAGE_COLORS[stage.id];
+            return (
+              <div
+                key={stage.id}
+                className="bg-muted/40 rounded-lg px-2 py-2.5 text-center cursor-pointer hover:bg-muted/70 transition-colors"
+                onClick={() => navigate('/pipeline')}
+                title={stage.label}
+              >
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <div className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                  <div className="text-[10px] text-muted-foreground font-bold">{stage.score}</div>
+                </div>
+                <div className={`text-lg font-bold tabular-nums leading-none ${stage.count > 0 ? colors.text : 'text-muted-foreground/40'}`}>
+                  {stage.count}
+                </div>
+                <div className="text-[9px] text-muted-foreground mt-1 leading-tight line-clamp-2">
+                  {stage.label}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Recent activity */}
+      {/* ── Recent activity ────────────────────────────────────────────────────── */}
       {!loading && !error && recentActivity.length > 0 && (
         <div className="bg-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
@@ -252,26 +350,30 @@ export function ActionPanelPage() {
             </button>
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {recentActivity.map((r) => (
-              <div key={r.cargo_id} className="px-5 py-3 flex items-center gap-3">
-                <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                  <Package className="size-3.5 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-semibold">{r.cargo_id}</span>
-                    <span className="text-xs text-muted-foreground">{r.client_name}</span>
+            {recentActivity.map((r) => {
+              const stage = toSucomoStage(r.latest_event_type);
+              const colors = STAGE_COLORS[stage];
+              return (
+                <div key={r.cargo_id} className="px-5 py-3 flex items-center gap-3">
+                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${colors?.badge ?? 'bg-muted'}`}>
+                    {STAGE_ICONS[stage] ?? <Package className="size-3.5" />}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                    <CheckCircle2 className="size-3 text-sky-500" />
-                    {eventTypeLabel(r.latest_event_type)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-semibold">{r.cargo_id}</span>
+                      <span className="text-xs text-muted-foreground">{r.client_name}</span>
+                    </div>
+                    <div className={`text-xs mt-0.5 flex items-center gap-1 ${colors?.text ?? 'text-muted-foreground'}`}>
+                      <CheckCircle2 className="size-3" />
+                      {eventTypeLabel(r.latest_event_type)}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground shrink-0">
+                    {formatRelativeTime(r.latest_event_time)}
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground shrink-0">
-                  {formatRelativeTime(r.latest_event_time)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import {
   Check,
   CreditCard,
   Download,
+  FileText,
   Loader2,
   Mail,
   Minus,
@@ -11,6 +12,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
+import { GenerateReportDialog } from './GenerateReportDialog';
 import {
   createManagerPayment,
   getManagerPayments,
@@ -441,6 +443,7 @@ export function PaymentsPage() {
   const [rows, setRows] = useState<ManagerPaymentRow[]>([]);
   const [search, setSearch] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [sendInvoiceFor, setSendInvoiceFor] = useState<ManagerPaymentRow | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -493,10 +496,23 @@ export function PaymentsPage() {
           <h1 className="text-2xl font-bold">Payments</h1>
           <p className="text-sm text-muted-foreground mt-1">Cash control ledger — money → shipment → client</p>
         </div>
-        <button type="button" onClick={() => setDrawerOpen(true)}
-          className="shrink-0 flex items-center gap-2 rounded-xl bg-foreground text-background px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
-          <Plus className="size-4" /> New Payment
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setReportDialogOpen(true)}
+            className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold hover:bg-muted transition-colors"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <FileText className="size-4" /> Generate Report
+          </button>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-foreground text-background px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="size-4" /> New Payment
+          </button>
+        </div>
       </div>
 
       {/* KPI */}
@@ -617,6 +633,12 @@ export function PaymentsPage() {
           onSent={(id) => { markEmailSent(id); setSendInvoiceFor(null); }}
         />
       )}
+
+      {/* Generate Customs Report Dialog */}
+      <GenerateReportDialog
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+      />
     </div>
   );
 }

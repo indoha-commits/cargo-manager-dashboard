@@ -26,33 +26,70 @@ export type ManagerContainer = {
   created_at: string;
 };
 
+// ── SUCOMO: Summarized Container Movement ─────────────────────────────────────
+// These are the 7 real operational milestones used in the logistics observatory.
+// Stage numbers match the SUCOMO chart (1 = final delivery, 7 = earliest stage).
+
+export const SUCOMO_STAGES = [
+  { id: 'VESSEL_ARRIVAL_AWAITED', label: 'Vessel Arrival at Port Awaited', score: 7, accent: 'slate' },
+  { id: 'AWAIT_DISCHARGE',        label: 'Await Discharge',                score: 6, accent: 'blue'  },
+  { id: 'SCT_LOADING_AWAITED',    label: 'SCT Loading Awaited',            score: 5, accent: 'violet'},
+  { id: 'UNDER_ICD_TRANSFER',     label: 'Under ICD Transfer',             score: 4, accent: 'amber' },
+  { id: 'UNDER_PORT_CLEARANCE',   label: 'Under Port Clearance',           score: 3, accent: 'orange'},
+  { id: 'LOADED_ON_WAY',          label: 'Loaded & On Way',                score: 2, accent: 'sky'   },
+  { id: 'ARRIVED_AT_CONSIGNEE',   label: 'Arrived at Consignee',           score: 1, accent: 'green' },
+] as const;
+
+export type SucomoStageId = typeof SUCOMO_STAGES[number]['id'];
+
+// Maps any event type (new SUCOMO or legacy) → canonical SUCOMO stage id
+const EVENT_TO_SUCOMO: Record<string, SucomoStageId> = {
+  // Native SUCOMO codes
+  VESSEL_ARRIVAL_AWAITED: 'VESSEL_ARRIVAL_AWAITED',
+  AWAIT_DISCHARGE:        'AWAIT_DISCHARGE',
+  SCT_LOADING_AWAITED:    'SCT_LOADING_AWAITED',
+  UNDER_ICD_TRANSFER:     'UNDER_ICD_TRANSFER',
+  UNDER_PORT_CLEARANCE:   'UNDER_PORT_CLEARANCE',
+  LOADED_ON_WAY:          'LOADED_ON_WAY',
+  ARRIVED_AT_CONSIGNEE:   'ARRIVED_AT_CONSIGNEE',
+
+  // Legacy event type aliases
+  REGISTERED:            'VESSEL_ARRIVAL_AWAITED',
+  DOCS_VERIFIED:         'AWAIT_DISCHARGE',
+  PHYSICAL_VERIFICATION: 'UNDER_PORT_CLEARANCE',
+  DEPARTED_PORT:         'SCT_LOADING_AWAITED',
+  IN_ROUTE_RUSUMO:       'UNDER_ICD_TRANSFER',
+  RELEASE:               'LOADED_ON_WAY',
+  WAREHOUSE_ARRIVAL:     'ARRIVED_AT_CONSIGNEE',
+  DISPATCH:              'ARRIVED_AT_CONSIGNEE',
+};
+
+export function toSucomoStage(eventType: string | null): SucomoStageId {
+  if (!eventType) return 'VESSEL_ARRIVAL_AWAITED';
+  return EVENT_TO_SUCOMO[eventType] ?? 'VESSEL_ARRIVAL_AWAITED';
+}
+
 export const MILESTONE_ORDER = [
-  'REGISTERED',
-  'PHYSICAL_VERIFICATION',
-  'DEPARTED_PORT',
-  'IN_ROUTE_RUSUMO',
-  'WAREHOUSE_ARRIVAL',
-  'DISPATCH',
+  'VESSEL_ARRIVAL_AWAITED',
+  'AWAIT_DISCHARGE',
+  'SCT_LOADING_AWAITED',
+  'UNDER_ICD_TRANSFER',
+  'UNDER_PORT_CLEARANCE',
+  'LOADED_ON_WAY',
+  'ARRIVED_AT_CONSIGNEE',
 ] as const;
 
 export function eventTypeLabel(eventType: string | null): string {
-  if (!eventType) return 'Not started';
-  const map: Record<string, string> = {
-    REGISTERED: 'Registered',
-    PHYSICAL_VERIFICATION: 'Physical verification',
-    DEPARTED_PORT: 'Departed port',
-    IN_ROUTE_RUSUMO: 'In route — Rusumo',
-    WAREHOUSE_ARRIVAL: 'Warehouse arrival',
-    DISPATCH: 'Dispatched',
-    DOCS_VERIFIED: 'Docs verified',
-    RELEASE: 'Released',
-  };
-  return map[eventType] ?? eventType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  if (!eventType) return 'Vessel Arrival Awaited';
+  const stageId = EVENT_TO_SUCOMO[eventType] ?? eventType;
+  const stage = SUCOMO_STAGES.find((s) => s.id === stageId);
+  if (stage) return stage.label;
+  return eventType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function milestoneProgress(eventType: string | null): number {
-  if (!eventType) return 0;
-  const idx = MILESTONE_ORDER.indexOf(eventType as typeof MILESTONE_ORDER[number]);
+  const stageId = toSucomoStage(eventType);
+  const idx = MILESTONE_ORDER.indexOf(stageId as typeof MILESTONE_ORDER[number]);
   if (idx === -1) return 0;
   return Math.round(((idx + 1) / MILESTONE_ORDER.length) * 100);
 }
@@ -78,33 +115,37 @@ export function toDays(targetIso: string | null): number | null {
 }
 
 export function deriveArrivalRelease(latestEventType: string | null): { arrival: string; release: string } {
-  const event = latestEventType ?? '';
-  if (event.includes('RELEASE') || event.includes('DISPATCH')) return { arrival: 'arrived', release: 'released' };
-  if (event.includes('ARRIVAL') || event.includes('DEPARTED_PORT') || event.includes('IN_ROUTE')) return { arrival: 'in_transit', release: 'not_released' };
+  const stage = toSucomoStage(latestEventType);
+  if (stage === 'ARRIVED_AT_CONSIGNEE' || stage === 'LOADED_ON_WAY') return { arrival: 'arrived', release: 'released' };
+  if (stage === 'UNDER_ICD_TRANSFER' || stage === 'SCT_LOADING_AWAITED') return { arrival: 'in_transit', release: 'not_released' };
   return { arrival: 'processing', release: 'not_released' };
 }
 
-export function decisionAction(daysToRelease: number | null, releaseStatus: string): string {
-  if (releaseStatus === 'released') return 'Dispatch NOW';
-  if (daysToRelease === null) return 'Set release date';
-  if (daysToRelease >= 3) return 'Wait';
-  if (daysToRelease === 2) return 'Pre-assign truck';
-  if (daysToRelease === 1) return 'Confirm truck';
-  if (daysToRelease <= 0) return 'Escalate overdue release';
-  return 'Monitor';
+export function decisionAction(daysToRelease: number | null, latestEventType: string | null): string {
+  const stage = toSucomoStage(latestEventType);
+  if (stage === 'ARRIVED_AT_CONSIGNEE') return 'Confirm delivery';
+  if (stage === 'LOADED_ON_WAY') return 'Track shipment';
+  if (stage === 'UNDER_PORT_CLEARANCE') return 'Monitor clearance';
+  if (stage === 'UNDER_ICD_TRANSFER') return 'Monitor ICD';
+  if (stage === 'SCT_LOADING_AWAITED') return 'Confirm SCT loading';
+  if (stage === 'AWAIT_DISCHARGE') return 'Await discharge';
+  if (daysToRelease !== null && daysToRelease <= 0) return 'Escalate — overdue';
+  if (daysToRelease !== null && daysToRelease <= 2) return 'Pre-assign truck';
+  return 'Wait — vessel en route';
 }
 
 export function pipelineState(latestEventType: string | null, daysToRelease: number | null): PipelineState {
-  const state = deriveArrivalRelease(latestEventType);
-  if (state.release === 'released') return 'ready_dispatch';
-  if (state.arrival === 'in_transit') return 'in_transit';
+  const stage = toSucomoStage(latestEventType);
+  if (stage === 'ARRIVED_AT_CONSIGNEE') return 'ready_dispatch';
+  if (stage === 'LOADED_ON_WAY' || stage === 'UNDER_ICD_TRANSFER') return 'in_transit';
   if (daysToRelease !== null && daysToRelease <= 2) return 'releasing_soon';
   return 'waiting';
 }
 
 export function priorityLevel(latestEventType: string | null, daysToRelease: number | null): PriorityLevel {
-  const state = deriveArrivalRelease(latestEventType);
-  if (state.release === 'released') return 'red';
+  const stage = toSucomoStage(latestEventType);
+  if (stage === 'ARRIVED_AT_CONSIGNEE') return 'red'; // needs immediate truck assignment
+  if (stage === 'LOADED_ON_WAY') return 'yellow';
   if (daysToRelease !== null && daysToRelease <= 2) return 'yellow';
   return 'green';
 }
@@ -145,7 +186,6 @@ export function useManagerData() {
     return (registry?.groups ?? []).flatMap((g) =>
       g.cargos.map((c) => {
         const days = toDays(g.expected_arrival_date ?? g.eta ?? null);
-        const release = deriveArrivalRelease(c.latest_event_type).release;
         return {
           cargo_id: c.cargo_id,
           cargo_uuid: c.cargo_uuid,
@@ -162,7 +202,7 @@ export function useManagerData() {
           expected_release_date: g.expected_arrival_date ?? g.eta ?? null,
           verification_status: (byCargoId.get(c.cargo_id)?.validation_status ?? 'unknown') as ManagerContainer['verification_status'],
           days_to_release: days,
-          recommended_action: decisionAction(days, release),
+          recommended_action: decisionAction(days, c.latest_event_type),
           pipeline_state: pipelineState(c.latest_event_type, days),
           priority_level: priorityLevel(c.latest_event_type, days),
           created_at: c.created_at,
