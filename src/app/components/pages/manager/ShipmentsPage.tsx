@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Calendar, DollarSign, Search, X } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, DollarSign, Search, X } from 'lucide-react';
 import { getManagerShipments, type ManagerShipmentsRow } from '@/app/api/ops';
 import { ContainerDetailDrawer } from './ContainerDetailDrawer';
 import type { ManagerContainer } from './data';
@@ -8,6 +8,13 @@ import { Button } from '@/app/components/ui/button';
 function money(n: number) {
   const v = Number.isFinite(n) ? n : 0;
   return v.toLocaleString('en-GB', { maximumFractionDigits: 0 });
+}
+
+/** Render a cell value: zero → dimmed dash, positive → formatted number */
+function cellMoney(raw: number | null | undefined) {
+  const v = Number(raw ?? 0);
+  if (!v) return <span className="text-muted-foreground/50">—</span>;
+  return <span>{money(v)}</span>;
 }
 
 function riskChip(outstanding: number, due: string | null) {
@@ -72,24 +79,63 @@ export function ShipmentsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-xs text-muted-foreground">Revenue</div>
-          <div className="text-xl font-bold tabular-nums">{money(totals.revenue)}</div>
+      {/* ── Summary cards ── */}
+      {totals.revenue === 0 && totals.cost === 0 && totals.outstanding === 0 ? (
+        /* Empty financial state */
+        <div className="bg-card border rounded-xl px-6 py-5 flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">No financials recorded yet</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">
+              Add revenue, cost and due dates when registering or editing each shipment.
+            </p>
+          </div>
+          <DollarSign className="size-8 text-muted-foreground/20 shrink-0" />
         </div>
-        <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-xs text-muted-foreground">Cost</div>
-          <div className="text-xl font-bold tabular-nums">{money(totals.cost)}</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Revenue */}
+          <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs text-muted-foreground mb-1">Revenue</div>
+            {totals.revenue === 0
+              ? <div className="text-xl font-bold text-muted-foreground/40">—</div>
+              : <div className="text-xl font-bold tabular-nums">{money(totals.revenue)}</div>
+            }
+          </div>
+          {/* Cost */}
+          <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs text-muted-foreground mb-1">Cost</div>
+            {totals.cost === 0
+              ? <div className="text-xl font-bold text-muted-foreground/40">—</div>
+              : <div className="text-xl font-bold tabular-nums">{money(totals.cost)}</div>
+            }
+          </div>
+          {/* Profit */}
+          <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs text-muted-foreground mb-1">Profit</div>
+            {totals.profit === 0
+              ? <div className="text-xl font-bold text-muted-foreground/40">—</div>
+              : (
+                <div className={`text-xl font-bold tabular-nums ${totals.profit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {money(totals.profit)}
+                </div>
+              )
+            }
+          </div>
+          {/* Outstanding */}
+          <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs text-muted-foreground mb-1">Outstanding</div>
+            {totals.outstanding === 0
+              ? (
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">Settled</div>
+                </div>
+              )
+              : <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{money(totals.outstanding)}</div>
+            }
+          </div>
         </div>
-        <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-xs text-muted-foreground">Profit</div>
-          <div className="text-xl font-bold tabular-nums">{money(totals.profit)}</div>
-        </div>
-        <div className="bg-card border rounded-xl px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-xs text-muted-foreground">Outstanding</div>
-          <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{money(totals.outstanding)}</div>
-        </div>
-      </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
@@ -154,9 +200,9 @@ export function ShipmentsPage() {
                           {r.service_scope === 'CLEARING_ONLY' ? 'Clearing only' : 'Logistics + Clearing'}
                         </span>
                       </td>
-                      <td className="px-5 py-3 tabular-nums">{money(Number(r.revenue || 0))}</td>
-                      <td className="px-5 py-3 tabular-nums">{money(Number(r.cost || 0))}</td>
-                      <td className="px-5 py-3 tabular-nums font-semibold">{money(Number(r.profit || 0))}</td>
+                      <td className="px-5 py-3 tabular-nums">{cellMoney(r.revenue)}</td>
+                      <td className="px-5 py-3 tabular-nums">{cellMoney(r.cost)}</td>
+                      <td className="px-5 py-3 tabular-nums font-semibold">{cellMoney(r.profit)}</td>
                       <td className="px-5 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${chip.className}`}>
                           {chip.label}

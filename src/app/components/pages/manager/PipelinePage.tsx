@@ -23,7 +23,7 @@ type TabDef = {
 const TABS: TabDef[] = [
   { key: 'all', label: 'All', icon: <Package className="size-3.5" />, accentClass: 'text-foreground' },
   { key: 'ready_dispatch', label: 'Ready to dispatch', icon: <Truck className="size-3.5" />, accentClass: 'text-red-500' },
-  { key: 'releasing_soon', label: 'Releasing soon', icon: <AlertTriangle className="size-3.5" />, accentClass: 'text-amber-500' },
+  { key: 'releasing_soon', label: 'Needs attention', icon: <AlertTriangle className="size-3.5" />, accentClass: 'text-red-500' },
   { key: 'in_transit', label: 'In transit', icon: <Activity className="size-3.5" />, accentClass: 'text-sky-500' },
   { key: 'waiting', label: 'Waiting', icon: <Clock className="size-3.5" />, accentClass: 'text-muted-foreground' },
 ];
@@ -66,6 +66,12 @@ export function PipelinePage() {
   const countFor = (key: PipelineState | 'all') =>
     key === 'all' ? rows.length : rows.filter((r) => r.pipeline_state === key).length;
 
+  // For "Needs attention" tab: how many are genuinely overdue (days_to_release < 0)
+  const overdueCount = useMemo(
+    () => rows.filter((r) => r.pipeline_state === 'releasing_soon' && (r.days_to_release ?? 0) < 0).length,
+    [rows],
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
@@ -96,12 +102,26 @@ export function PipelinePage() {
             >
               <span className={isActive ? 'text-foreground' : tab.accentClass}>{tab.icon}</span>
               {tab.label}
-              {count !== null && (
+              {count !== null && count > 0 && (
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                    isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                    tab.key === 'releasing_soon'
+                      ? isActive
+                        ? 'bg-red-500/20 text-red-600 dark:text-red-400'
+                        : 'bg-red-500/15 text-red-600 dark:text-red-400'
+                      : isActive
+                        ? 'bg-primary/15 text-primary'
+                        : 'bg-muted text-muted-foreground'
                   }`}
                 >
+                  {count}
+                  {tab.key === 'releasing_soon' && overdueCount > 0 && overdueCount < count && (
+                    <> · {overdueCount} overdue</>
+                  )}
+                </span>
+              )}
+              {count !== null && count === 0 && tab.key !== 'all' && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold bg-muted text-muted-foreground">
                   {count}
                 </span>
               )}
@@ -153,12 +173,20 @@ export function PipelinePage() {
         </div>
       ) : (
         <div className="bg-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-          <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-5 py-3 border-b flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'var(--border)' }}>
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {filtered.length} container{filtered.length !== 1 ? 's' : ''}
               {search && ' matching'}
             </span>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {activeTab === 'releasing_soon' && overdueCount > 0 && (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                <AlertTriangle className="size-3.5" />
+                {overdueCount === filtered.length
+                  ? 'All containers are overdue'
+                  : `${overdueCount} of ${filtered.length} are overdue`}
+              </span>
+            )}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground ml-auto">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> ACTION NOW</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> PREPARE</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> STABLE</span>
