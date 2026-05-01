@@ -167,9 +167,82 @@ function parseReconstructedRecord(combined: string, rowNo: number): ReportRow | 
   };
 }
 
+// ── TSV / tab-separated format parser ────────────────────────────────────────
+// When the .txt file exported from Rwanda e-Single Window uses tabs as delimiters
+// (one line = one declaration row) we parse it directly without column reconstruction.
+//
+// Confirmed column layout from sample data:
+//  [0]  Year          [1]  Office        [2]  Agent TIN (skip)
+//  [3]  Reg.Ref/Num   [4]  Reg.Ser       [5]  Seq# (skip)
+//  [6]  Reg.Date      [7]  Type          [8]  Gen.Proc
+//  [9]  Items         [10] (empty)       [11] Consignee TIN
+//  [12] Total Taxes   [13] Ast.Ser       [14] Ast.Num
+//  [15] (empty)       [16] Ast.Date      [17] Color
+//  [18] Assessor Ofc  [19-20] dates      [21] Examiner name …
+
+function parseTsvFormat(text: string, pricePerDmc: string): ParseResult {
+  const rows: ReportRow[] = [];
+  const selectionCriteria: Record<string, string> = {};
+  let reportDate = '';
+  let rowNo = 1;
+
+  for (const rawLine of text.split('\n')) {
+    if (!rawLine.includes('\t')) continue;
+    const cols = rawLine.split('\t');
+
+    // First column must be a valid 4-digit year — skip header/blank lines
+    const year = cols[0]?.trim() ?? '';
+    if (!/^20\d{2}$/.test(year)) continue;
+
+    rows.push({
+      no:           rowNo++,
+      year,
+      office:       cols[1]?.trim()  ?? '',
+      reg_num:      cols[3]?.trim()  ?? '',
+      reg_ser:      cols[4]?.trim()  ?? '',
+      reg_date:     cols[6]?.trim()  ?? '',
+      type:         cols[7]?.trim()  ?? '',
+      gen_proc:     cols[8]?.trim()  ?? '',
+      items:        cols[9]?.trim()  ?? '',
+      consignee:    cols[11]?.trim() ?? '',
+      total_taxes:  cols[12]?.trim() ?? '',
+      description:  cols[3]?.trim()  ?? '',   // reuse reg ref as description
+      ast_ser:      cols[13]?.trim() ?? '',
+      ast_num:      cols[14]?.trim() ?? '',
+      ast_date:     cols[16]?.trim() ?? '',
+      color:        cols[17]?.trim() ?? '',
+      price_per_dmc: pricePerDmc,
+    });
+  }
+
+  // Try to find a report date from the first non-data lines
+  for (const line of text.split('\n').slice(0, 10)) {
+    const m = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+    if (m) { reportDate = m[1]; break; }
+  }
+
+  const totalDmc = rows.length;
+  const totalPrice = rows.reduce((sum, r) => {
+    const n = parseInt(r.total_taxes.replace(/[^0-9]/g, ''), 10);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+
+  const errors: string[] = rows.length === 0
+    ? ['No data rows found. Make sure the file is the tab-separated export from Rwanda e-Single Window.']
+    : [];
+
+  return { rows, totalDmc, totalPrice, reportDate, selectionCriteria, errors };
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export function parsePsAsciiText(text: string, pricePerDmc = '118,000 RWF'): ParseResult {
+  // Detect tab-separated format: if most non-empty lines contain tabs, use the TSV branch
+  const nonEmptyLines = text.split('\n').filter((l) => l.trim().length > 0);
+  const tabLineCount = nonEmptyLines.filter((l) => l.includes('\t')).length;
+  if (nonEmptyLines.length > 0 && tabLineCount / nonEmptyLines.length > 0.4) {
+    return parseTsvFormat(text, pricePerDmc);
+  }
   const errors: string[] = [];
   const rows: ReportRow[] = [];
   const selectionCriteria: Record<string, string> = {};
