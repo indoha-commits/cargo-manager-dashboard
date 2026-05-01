@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Upload,
@@ -36,6 +36,21 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
   const [errorMsg, setErrorMsg] = useState('');
   const [isBitmap, setIsBitmap] = useState(false);
   const [pricePerDmc, setPricePerDmc] = useState(defaultPricePerDmc);
+
+  // Reset to idle state every time the dialog is opened so a fresh upload is required
+  useEffect(() => {
+    if (open) {
+      setUploadState('idle');
+      setFileName('');
+      setParseResult(null);
+      setErrorMsg('');
+      setIsBitmap(false);
+      setPricePerDmc(defaultPricePerDmc);
+      // Clear the hidden file input value so the same filename can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
