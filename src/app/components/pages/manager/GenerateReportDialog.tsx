@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   FileText,
   Upload,
@@ -37,8 +37,9 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
   const [isBitmap, setIsBitmap] = useState(false);
   const [pricePerDmc, setPricePerDmc] = useState(defaultPricePerDmc);
 
-  // Reset to idle state every time the dialog is opened so a fresh upload is required
-  useEffect(() => {
+  // Reset state synchronously before the browser paints whenever the dialog opens.
+  // useLayoutEffect fires before paint so the user never sees stale data from a previous session.
+  useLayoutEffect(() => {
     if (open) {
       setUploadState('idle');
       setFileName('');
@@ -46,8 +47,6 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
       setErrorMsg('');
       setIsBitmap(false);
       setPricePerDmc(defaultPricePerDmc);
-      // Clear the hidden file input value so the same filename can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -112,13 +111,18 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
     }
   };
 
-  const handleReset = () => {
+  const handleReset = (openPickerAfter = false) => {
+    // Clear the native input value so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setUploadState('idle');
     setFileName('');
     setParseResult(null);
     setErrorMsg('');
     setIsBitmap(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (openPickerAfter) {
+      // Small timeout lets the state update flush before we programmatically open the picker
+      setTimeout(() => fileInputRef.current?.click(), 50);
+    }
   };
 
   const handleDownload = () => {
@@ -199,7 +203,16 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
             </p>
           </div>
 
-          {/* Upload area */}
+          {/* Hidden file input — always in the DOM so the ref is never null */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".ps,.txt,.text"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {/* Upload drop-zone (visible only when idle) */}
           {uploadState === 'idle' && (
             <div
               className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-sky-400 hover:bg-sky-50/5 transition-colors"
@@ -211,13 +224,6 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
               <p className="text-xs text-muted-foreground mt-1">
                 Accepts <strong>.txt</strong> (ps2ascii output) or <strong>.ps</strong> (PostScript)
               </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".ps,.txt,.text"
-                className="hidden"
-                onChange={handleFileChange}
-              />
             </div>
           )}
 
@@ -254,10 +260,7 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
               )}
               <button
                 type="button"
-                onClick={() => {
-                  handleReset();
-                  fileInputRef.current?.click();
-                }}
+                onClick={() => handleReset(true)}
                 className="w-full py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors flex items-center justify-center gap-2"
                 style={{ borderColor: 'var(--border)' }}
               >
@@ -309,7 +312,7 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
             {uploadState !== 'idle' && (
               <button
                 type="button"
-                onClick={handleReset}
+                onClick={() => handleReset(true)}
                 className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-muted transition-colors flex items-center gap-1.5"
                 style={{ borderColor: 'var(--border)' }}
               >
