@@ -111,7 +111,7 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
     }
   };
 
-  const handleReset = (openPickerAfter = false) => {
+  const handleReset = () => {
     // Clear the native input value so the same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = '';
     setUploadState('idle');
@@ -119,10 +119,14 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
     setParseResult(null);
     setErrorMsg('');
     setIsBitmap(false);
-    if (openPickerAfter) {
-      // Small timeout lets the state update flush before we programmatically open the picker
-      setTimeout(() => fileInputRef.current?.click(), 50);
-    }
+  };
+
+  /** Reset state AND immediately open the file picker (must be called inside a user-gesture handler). */
+  const handleResetAndPick = () => {
+    handleReset();
+    // Call .click() synchronously here — still inside the browser's user-gesture context.
+    // setTimeout would break that context and the browser would silently block the picker.
+    fileInputRef.current?.click();
   };
 
   const handleDownload = () => {
@@ -260,7 +264,7 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
               )}
               <button
                 type="button"
-                onClick={() => handleReset(true)}
+                onClick={handleResetAndPick}
                 className="w-full py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors flex items-center justify-center gap-2"
                 style={{ borderColor: 'var(--border)' }}
               >
@@ -312,7 +316,7 @@ export function GenerateReportDialog({ open, onClose, defaultPricePerDmc = '118,
             {uploadState !== 'idle' && (
               <button
                 type="button"
-                onClick={() => handleReset(true)}
+                onClick={handleResetAndPick}
                 className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-muted transition-colors flex items-center gap-1.5"
                 style={{ borderColor: 'var(--border)' }}
               >
